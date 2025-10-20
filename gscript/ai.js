@@ -29,6 +29,7 @@ function geminiModelCandidates_() {
 }
 
 function geminiGenerate_(prompt) {
+    const props = PropertiesService.getScriptProperties();
     const GEMINI_API_KEY = props.getProperty('GEMINI_API_KEY');
 
   if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY manquant');
