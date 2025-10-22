@@ -44,7 +44,14 @@ function insertDeal(
   category,
   item_type,
   desc_rcz,
-  desc_ai,
+  desc_ai_fr,
+  desc_ai_en,
+  desc_ai_es,
+  desc_ai_it,
+  desc_ai_de,
+  desc_ai_ru,
+  desc_ai_pt,
+  compatible_ai,
   image,
   token,
   prct_discount
@@ -65,7 +72,14 @@ function insertDeal(
     category,
     item_type,
     desc_rcz,
-    desc_ai,
+    desc_ai_fr,
+    desc_ai_en,
+    desc_ai_de,
+    desc_ai_es,
+    desc_ai_it,
+    desc_ai_ru,
+    desc_ai_pt,
+    compatible_ai,
     image,
     token,
     prct_discount
@@ -147,7 +161,14 @@ function insertDealTest() {
   const category = 'pneus';
   const item_type = 'pneu';
   const desc_rcz = 'Pneu avant mythique, excellent grip';
-  const desc_ai = 'Super grip, idéal enduro/all-mountain';
+  const desc_ai_fr = 'Super grip, idéal enduro/all-mountain';
+  const desc_ai_en = 'en Super grip, idéal enduro/all-mountain';
+  const desc_ai_de = 'de Super grip, idéal enduro/all-mountain';
+  const desc_ai_es = 'es Super grip, idéal enduro/all-mountain';
+  const desc_ai_it = 'it Super grip, idéal enduro/all-mountain';
+  const desc_ai_ru = 'ru Super grip, idéal enduro/all-mountain';
+  const desc_ai_pt = 'pt Super grip, idéal enduro/all-mountain';
+  const compatible_ai = 'rise ok reaper ok enduro ok';
   const image = 'https://rczbikeshop.com/media/catalog/product/m/a/maxxis-minion-dhf-275x24.jpg';
   const prct_discount = Math.round(((price_original - price_current) / price_original) * 100);
 
@@ -162,7 +183,14 @@ function insertDealTest() {
     category,
     item_type,
     desc_rcz,
-    desc_ai,
+    desc_ai_fr,
+    desc_ai_en,
+    desc_ai_es,
+    desc_ai_it,
+    desc_ai_de,
+    desc_ai_ru,
+    desc_ai_pt,
+    compatible_ai,
     image,
     token,
     prct_discount

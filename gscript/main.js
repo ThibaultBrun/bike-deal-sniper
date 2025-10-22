@@ -4,7 +4,7 @@
 const LABEL_NAME              = 'rcz_nl';
 const DONE_LABEL_NAME         = 'rcz_nl/_done';
 const MAX_THREADS_PER_RUN     = 1;
-const MAX_ITEMS_PER_THREAD    = 10;
+const MAX_ITEMS_PER_THREAD    = 5;
 const SLEEP_MS_FETCH          = 400;
 const SEND_ONE_MAIL_PER_ITEM  = true;
 const RECIPIENT               = Session.getActiveUser().getEmail();
@@ -166,12 +166,19 @@ function processRczEmails() {
           p.usageRaw   = ai.usage || '';
           p.usageNorm  = normalizeCategory(ai.usage);
           p.usageFinal = p.usageNorm || 'Autre';
-          p.resumeIA   = ai.resume || '';
+          p.resumeIA_fr   = ai.resume_fr || '';
+          p.resumeIA_en   = ai.resume_en || '';
+          p.resumeIA_de   = ai.resume_de || '';
+          p.resumeIA_es   = ai.resume_es || '';
+          p.resumeIA_ru   = ai.resume_ru || '';
+          p.resumeIA_pt   = ai.resume_pt || '';
+          p.resumeIA_it   = ai.resume_it || '';
           p.type       = ai.type || '';
-          log(`   🤖 IA usage="${p.usageFinal}" type="${p.type}" resume="${short_(p.resumeIA,100)}"`);
+          p.compatible       = ai.compatible || '';
+          log(`   🤖 IA usage="${p.usageFinal}" type="${p.type}" resume="${short_(p.resumeIA_fr,100)}"`);
         } catch (e) {
           log(`   ⚠️ IA erreur: ${e}`);
-          p.usageRaw = ''; p.usageNorm = ''; p.usageFinal = 'Autre'; p.resumeIA = '';
+          p.usageRaw = ''; p.usageNorm = ''; p.usageFinal = 'Autre'; p.resumeIA_fr = '';
         }
 
         Utilities.sleep(SLEEP_MS_FETCH);
@@ -220,7 +227,6 @@ function processRczEmails() {
           token += chars.charAt(Math.floor(Math.random() * chars.length));
         }
 
-
         insertDeal(
           escapeHtml_(p.canonical || p.link || ''),
           p.title,
@@ -231,12 +237,18 @@ function processRczEmails() {
           p.usageFinal,
           p.type,
           p.pageDescription,
-          p.resumeIA,
+          p.resumeIA_fr,
+          p.resumeIA_en,
+          p.resumeIA_es,
+          p.resumeIA_it,
+          p.resumeIA_de,
+          p.resumeIA_ru,
+          p.resumeIA_pt,
+          p.compatible,
           p.image,
           token,
           p.discountPct
         );
-
 
         Utilities.sleep(SLEEP_MS_FETCH);
       }

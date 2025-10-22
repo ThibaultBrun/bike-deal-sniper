@@ -121,18 +121,25 @@ Contraintes :
   Route, Gravel, XC, Trail / All-Mountain, Enduro, DH / Bike Park,
   E-MTB Trail / All-Mountain, E-MTB Enduro, E-MTB Autre,
   Accessoires génériques, Autre
-- "resume" : mini-article court de 4 à 5 lignes max (~100 tokens). 
+- "resume_fr" : petit article court de 4 à 5 lignes max facon vendeur de vélo. 
   Inclure :
-  • Description rapide du produit et son usage.
+  • Description rapide du produit et son usage (3-4 lignes). si possible ajouter le poid. 
   • Comparaison avec 1–2 concurrents connus (Shimano, SRAM, Fox, RockShox, Magura, DT Swiss, Maxxis, Schwalbe, etc.).
   • Positionnement de gamme (entrée/milieu/haut).
+- "resume_en" : le même article mais en anglais
+- "resume_de" : le même article en allemant
+- "resume_es" : le même article en espagnol
+- "resume_it" : le même article en italien
+- "resume_ru" : le même article en russe
+- "resume_pt" : le même article en portugais
+  - "compatible" : la compatibilité avec les vélos suivants
   • compatibilité orbea rise 2023 endurisé ( fourche 29 150mm / amortisseur 210*55 / transmission ms 12s / roues 29 alu légère et solide (enduro) ms  )
   • compatibilité rocky mountain reaper 24 ( fourche 26 120-130mm / amortisseur 165x38 /  transmission hg 10s / roues 24 / tige de selle telescopique < 125mm  30.9   )
 
   • compatibilité specicialized enduro comp 2016 650b ( fourche 27.5 160-170mm / amortisseur 216x63 / transmission gx 11s / roues 27.5 )
 
 Format de sortie STRICT :
-{"usage":"<valeur>","type":"<type>","resume":"<texte en 4-5 lignes max>"}
+{"usage":"<valeur>","type":"<type>","resume":"<texte en 4-5 lignes max>","compatible":"<le texte sur la compatibilité>"}
 
 Produit : ${productName}`;
 
@@ -142,9 +149,16 @@ Produit : ${productName}`;
     if (parsed) {
       const normalized = normalizeCategory(parsed.usage) || parsed.usage || "Autre";
       const usage = ALLOWED_CATEGORIES.includes(normalized) ? normalized : "Autre";
-      const resume = (parsed.resume || "").toString().trim();
+      const resume_fr = (parsed.resume_fr || "").toString().trim();
+      const resume_en = (parsed.resume_en || "").toString().trim();
+      const resume_de = (parsed.resume_de || "").toString().trim();
+      const resume_es = (parsed.resume_es || "").toString().trim();
+      const resume_it = (parsed.resume_it || "").toString().trim();
+      const resume_ru = (parsed.resume_ru || "").toString().trim();
+      const resume_pt = (parsed.resume_pt || "").toString().trim();
       const type = (parsed.type || "").toString().trim();
-      return { usage, type, resume };
+      const compatible = (parsed.compatible || "").toString().trim();
+      return { usage, type, resume_fr, resume_en, resume_de, resume_es, resume_it, resume_ru, resume_pt, compatible };
     }
 
     const m = out.match(/usage\s*principal\s*[:\-]\s*(.+)/i);
@@ -153,6 +167,6 @@ Produit : ${productName}`;
     return { usage, type: "", resume: "" };
   } catch (e) {
     log('   ❌ classifyBikeProductStructured_ error: ' + e);
-    return { usage: "Autre", type: "", resume: "" };
+    return { usage: "Autre", type: "", resume: "", compatible : "" };
   }
 }

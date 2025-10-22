@@ -5,17 +5,17 @@ function buildSubject_(it) {
   return `[RCZ] ${it.type || ''} ${usage} ${pct} ${it.title || it.rawDescription || 'Article'}`.trim();
 }
 
-function buildItemEmailHtml_(it, idx) {
-  const code = it.code ? `<code style="background:#111827;color:#fff;padding:2px 6px;border-radius:6px;font-family:ui-monospace,Menlo,Consolas,monospace;">${escapeHtml_(it.code)}</code>` : '—';
-  const img  = it.image ? `<img src="${escapeHtml_(it.image)}" alt="" style="max-width:560px;height:auto;border-radius:10px;margin:8px 0;">` : '';
-  const url  = escapeHtml_(it.canonical || it.link || '');
-  const usage = it.usageFinal || 'Autre';
-  const resume = it.resumeIA || '';
+function buildItemEmailHtml_(item, idx) {
+  const code = item.code ? `<code style="background:#111827;color:#fff;padding:2px 6px;border-radius:6px;font-family:ui-monospace,Menlo,Consolas,monospace;">${escapeHtml_(item.code)}</code>` : '—';
+  const img  = item.image ? `<img src="${escapeHtml_(item.image)}" alt="" style="max-width:560px;height:auto;border-radius:10px;margin:8px 0;">` : '';
+  const url  = escapeHtml_(item.canonical || item.link || '');
+  const usage = item.usageFinal || 'Autre';
+  const resume = item.resumeIA_fr || '';
 
   return `
   <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;line-height:1.55">
-    <h2 style="margin:0 0 6px">#${idx} · ${escapeHtml_(it.title || it.rawDescription || 'Article RCZ')}</h2>
-    <div style="margin:0 0 12px;color:#374151">${it.pageDescription || ''}</div>
+    <h2 style="margin:0 0 6px">#${idx} · ${escapeHtml_(item.title || item.rawDescription || 'Article RCZ')}</h2>
+    <div style="margin:0 0 12px;color:#374151">${item.pageDescription || ''}</div>
     ${img}
     <table style="border-collapse:collapse;margin:10px 0 14px 0;font-size:14px;">
       <tr>
@@ -27,11 +27,15 @@ function buildItemEmailHtml_(it, idx) {
         <td style="padding:4px 8px;text-align:right;">${escapeHtml_(resume || '—')}</td>
       </tr>
       <tr>
+        <td style="padding:4px 8px;background:#f3f4f6;border-radius:6px;">Compatibilité</td>
+        <td style="padding:4px 8px;text-align:right;">${escapeHtml_(item.compatible || '—')}</td>
+      </tr>
+      <tr>
         <td style="padding:4px 8px;background:#f3f4f6;border-radius:6px;">Prix promo (mail)</td>
         <td style="padding:4px 8px;text-align:right;">
-          <b>${fmtPrice_(it.priceNew)}</b>
-          &nbsp; <span style="text-decoration:line-through;color:#6b7280;">${fmtPrice_(it.priceOld)}</span>
-          &nbsp; <span style="color:#16a34a;font-weight:700;">-${it.discountPct != null ? it.discountPct : '—'}%</span>
+          <b>${fmtPrice_(item.priceNew)}</b>
+          &nbsp; <span style="text-decoration:line-through;color:#6b7280;">${fmtPrice_(item.priceOld)}</span>
+          &nbsp; <span style="color:#16a34a;font-weight:700;">-${item.discountPct != null ? item.discountPct : '—'}%</span>
         </td>
       </tr>
       <tr>
