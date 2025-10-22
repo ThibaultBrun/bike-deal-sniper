@@ -7,7 +7,7 @@ create table public.deals (
   category text null,
   item_type text null,
   desc_rcz text null,
-  desc_ai text null,
+  desc_ai_fr text null,
   token text not null,
   is_available boolean null default true,
   created_at timestamp with time zone null default now(),
@@ -15,6 +15,13 @@ create table public.deals (
   id text not null,
   image text null,
   prct_discount numeric null,
+  compatible_ai text null,
+  desc_ai_en text null,
+  desc_ai_es text null,
+  desc_ai_de text null,
+  desc_ai_it text null,
+  desc_ai_ru text null,
+  desc_ai_pt text null,
   constraint deals_pkey primary key (id),
   constraint deals_duplicate_token_key unique (token)
 ) TABLESPACE pg_default;
