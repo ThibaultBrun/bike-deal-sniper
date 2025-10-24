@@ -184,6 +184,27 @@ function processRczEmails() {
         Utilities.sleep(SLEEP_MS_FETCH);
 
         // --- ENVOI immédiat ---
+
+        // -- Envoi dans supabase
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let token = '';
+        for (let i = 0; i < chars.length; i++) {
+          token += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+      p.token = token;
+      // Telegram
+        const cats = resolveMainCategory(p.usageNorm);
+
+        cats.forEach((cat, i) => {
+          if (i > 0) Utilities.sleep(1100); // anti-flood
+          try{
+            publishDealWithImage(cat, p);
+          }catch(e){
+            log(`   ⚠️ send TG KO (${e})`);
+          }
+        });
+      
         const subjectOut = buildSubject_(p);
         const htmlOut    = buildItemEmailHtml_(p, displayIndexBase + i + 1);
         try {
@@ -220,12 +241,6 @@ function processRczEmails() {
 
 
 
-        // -- Envoi dans supabase
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        let token = '';
-        for (let i = 0; i < chars.length; i++) {
-          token += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
 
         insertDeal(
           escapeHtml_(p.canonical || p.link || ''),
@@ -246,7 +261,7 @@ function processRczEmails() {
           p.resumeIA_pt,
           p.compatible,
           p.image,
-          token,
+          p.token,
           p.discountPct
         );
 

@@ -246,3 +246,35 @@ function scrapePageMeta_(html, baseUrl) {
   };
 }
 
+function resolveMainCategory(usageNorm) {
+  if (!usageNorm) return null;
+  const u = usageNorm.toLowerCase();
+  log(`usage norm : ${usageNorm}`);
+  // Routes / gravel
+  if (u.includes("route") || u.includes("gravel")){
+    log('usage final road');
+
+    return ["road"];
+  }
+
+  // Tout le reste est du VTT (y compris E-MTB, Enduro, DH, Trail, XC, etc.)
+  if (
+    u.includes("vtt") ||
+    u.includes("mtb") ||
+    u.includes("e-mtb") ||
+    u.includes("enduro") ||
+    u.includes("dh") ||
+    u.includes("trail") ||
+    u.includes("all-mountain") ||
+    u.includes("xc")
+  ){
+        log('usage final mtb');
+
+    return ["mtb"];
+  }
+          log('usage final both');
+
+  return ["mtb","road"];
+}
+
+

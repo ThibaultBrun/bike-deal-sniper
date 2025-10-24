@@ -77,13 +77,13 @@ function formatDealCaption_(deal, lang = "en") {
   const descKey = `desc_ai_${lang}`;
   const desc = deal[descKey] || deal.desc_ai_en || "";
 
-  const priceNow = deal.price_current
-    ? `€${Number(deal.price_current).toLocaleString("fr-FR", { minimumFractionDigits: 2 })}`
+  const priceNow = deal.priceNew
+    ? `€${Number(deal.priceNew).toLocaleString("fr-FR", { minimumFractionDigits: 2 })}`
     : "";
-  const priceOld = deal.price_original
-    ? `€${Number(deal.price_original).toLocaleString("fr-FR", { minimumFractionDigits: 2 })}`
+  const priceOld = deal.priceOld
+    ? `€${Number(deal.priceOld).toLocaleString("fr-FR", { minimumFractionDigits: 2 })}`
     : "";
-  const pct = deal.discount_pct ? `(-${deal.discount_pct}%)` : "";
+  const pct = deal.discountPct ? `(-${deal.discountPct}%)` : "";
   const store = deal.store ? ` • ${escapeHtml_(deal.store)}` : "";
   const note = deal.note ? `\n<i>${escapeHtml_(deal.note)}</i>` : "";
 
@@ -177,8 +177,8 @@ function demo_publish_one_deal() {
     id: 1,
     title: "Fourche Fox 36 Factory 29\" Grip2 160 mm Kashima",
     url: "https://rcz-watcher.netlify.app?token=7biLhf9dLZXUioBIWUDH7MRzvqe1HDTyti42z6quqo6SKD4F2QRNj37k1XnB9J",
-    price_current: 699.99,
-    price_original: 1350.00,
+    priceNew: 699.99,
+    priceOld: 1350.00,
     coupon_code: null,
     category: "mtb_toto",
     item_type: "Fourche suspendue",
@@ -193,7 +193,7 @@ function demo_publish_one_deal() {
     compatible_ai: "VTT, enduro, e-MTB",
     image: "https://www.rczbikeshop.com/media/catalog/product/cache/f2c698138e349cde449cb65d1fa1bf9e/f/o/fox36_factory_160_grip2_kashima_29.jpg",
     token: "7biLhf9dLZXUioBIWUDH7MRzvqe1HDTyti42z6quqo6SKD4F2QRNj37k1XnB9J",
-    prct_discount: 48
+    discountPct: 48
   };
 
   publishDealWithImage("mtb",deal);
