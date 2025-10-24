@@ -130,7 +130,7 @@ function demo_publish_one_deal() {
     price_current: 389.99,
     price_original: 799.00,
     discount_pct: 51,
-    url: "https://www.rczbikeshop.com/default/dt-swiss-front-hub-350s-is-28h-15x110mm-black-h35pbdixr28so8974s.html",
+    url: "https://rcz-watcher.netlify.app?token=7biLhf9dLZXUioBIWUDH7MRzvqe1HDTyti42z6quqo6SKD4F2QRNj37k1XnB9J",
     category: "mtb_fr",
     store: "RCZ",
     note: "Quantités limitées – axe 15x110, offset 44.",

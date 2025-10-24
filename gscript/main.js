@@ -3,7 +3,7 @@
 /***** ========== CONFIG ========== *****/
 const LABEL_NAME              = 'rcz_nl';
 const DONE_LABEL_NAME         = 'rcz_nl/_done';
-const MAX_THREADS_PER_RUN     = 1;
+const MAX_THREADS_PER_RUN     = 3;
 const MAX_ITEMS_PER_THREAD    = 5;
 const SLEEP_MS_FETCH          = 400;
 const SEND_ONE_MAIL_PER_ITEM  = true;

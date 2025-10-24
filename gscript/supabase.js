@@ -120,7 +120,7 @@ function insertDeal(
         apikey: SUPABASE_ANON_KEY,            // toujours requis
         Authorization: 'Bearer ' + access_token, // JWT du bot authentifié
         'Content-Type': 'application/json',
-        Prefer: 'return=representation'
+        Prefer: 'return=representation,resolution=merge-duplicates'
       },
       payload: JSON.stringify(payload),
       muteHttpExceptions: true
