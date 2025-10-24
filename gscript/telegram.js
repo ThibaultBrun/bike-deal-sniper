@@ -8,7 +8,14 @@
 // Mappe tes catégories vers les chats cibles
 // (chaînes négatives pour channels/supergroups : ex. -1001234567890)
 const CHAT_IDS = {
-  "mtb_fr":    [-1002742932352],
+  mtb: {
+    fr: "-1002742932352",
+    en: "-1003183690292",
+    de: "-1003161099882",
+    it: "-1003139844241",
+    pt: "-1003186055556",
+    es: "-1003125828603"
+  }
 };
 
 function tgToken_() {
