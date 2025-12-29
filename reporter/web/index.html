@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>RCZ Dashboard</title>
+    <style>
+      body {
+        font-family: system-ui, Arial;
+        margin: 16px;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(4, minmax(200px, 1fr));
+        margin: 12px 0;
+      }
+      .card {
+        border: 1px solid #ddd;
+        border-radius: 14px;
+        padding: 12px;
+      }
+      .kpi {
+        font-size: 22px;
+        font-weight: 800;
+      }
+      .muted {
+        color: #666;
+        font-size: 12px;
+      }
+      input,
+      select,
+      button {
+        padding: 10px;
+        border-radius: 12px;
+        border: 1px solid #ddd;
+      }
+      button {
+        cursor: pointer;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #eee;
+        padding: 10px;
+        text-align: left;
+      }
+      th {
+        white-space: nowrap;
+      }
+      td.right {
+        text-align: right;
+      }
+      .pill {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        border: 1px solid #ddd;
+        font-size: 12px;
+      }
+      .charts {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr 1fr;
+      }
+      @media (max-width: 900px) {
+        .charts {
+          grid-template-columns: 1fr;
+        }
+        .grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .hidden {
+        display: none;
+      }
+      #chartAll {
+        height: 220px !important;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>RCZ Dashboard</h1>
+    <div class="card">
+      <div class="row">
+        <input id="email" placeholder="email" type="email" />
+        <input id="password" placeholder="password" type="password" />
+        <button id="btnLogin">Login</button>
+        <button id="btnLogout" class="hidden">Logout</button>
+        <span id="authState" class="muted"></span>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top: 12px">
+      <input
+        id="q"
+        placeholder="Recherche (items_text, order_number…)"
+        size="40"
+      />
+      <select id="view">
+        <option value="all">Tout</option>
+        <option value="sold">Vendus</option>
+        <option value="stock">Stock</option>
+      </select>
+      <button id="btnReload">Rafraîchir</button>
+    </div>
+
+    <div class="grid" id="kpis"></div>
+
+    <div class="card" style="margin-top: 12px">
+      <div>
+        <strong>Cashflow hebdo : dépenses / gains + cumul net (€)</strong>
+      </div>
+      <canvas id="chartAll"></canvas>
+    </div>
+
+    <div class="card" style="margin-top: 12px">
+      <div class="row" style="justify-content: space-between">
+        <strong>Achats / Reventes</strong>
+        <span class="muted"
+          >Clique “Éditer” pour renseigner prix/date de revente</span
+        >
+      </div>
+      <div style="overflow: auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Item</th>
+              <th>Order</th>
+              <th>Perso</th>
+              <th class="right">Coût (€)</th>
+              <th class="right">Revente estimé (€)</th>
+              <th class="right">Revente (€)</th>
+              <th>Date revente</th>
+              <th class="right">Profit estimé (€)</th>
+              <th class="right">Profit (€)</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
