@@ -48,13 +48,13 @@ async function refreshAuthUI() {
     ? `Connecté: ${session.user.email}`
     : "Non connecté";
 
-    if(logged) {
-      el("email").classList.add("hidden");
-      el("password").classList.add("hidden");
-    } else {
-      el("email").classList.remove("hidden");
-      el("password").classList.remove("hidden");
-    }
+  if (logged) {
+    el("email").classList.add("hidden");
+    el("password").classList.add("hidden");
+  } else {
+    el("email").classList.remove("hidden");
+    el("password").classList.remove("hidden");
+  }
 }
 
 async function login() {
@@ -79,7 +79,7 @@ async function fetchPurchases() {
   const { data, error } = await supabaseClient
     .from("purchases")
     .select(
-      "id,order_date,resale_date,items_text,order_number,grand_total,resale_price,expected_resale_price,personal_use"
+      "id,order_date,resale_date,items_text,order_number,grand_total,resale_price,expected_resale_price,personal_use,delivery_date"
     )
     .or("personal_use.is.null,personal_use.eq.false")
     .order("order_date", { ascending: false });
@@ -313,6 +313,12 @@ function weekLabel(weekKey) {
   return `W${w} ${y}`;
 }
 
+function transitValue(items) {
+  return items
+    .filter((i) => !i.delivery_date)
+    .reduce((sum, i) => sum + (Number(i.grand_total) || 0), 0);
+}
+
 function computeKPIs(rowsAll) {
   const rows = rowsAll.map((r) => {
     const cost = toNumber(r.grand_total) ?? 0;
@@ -333,7 +339,10 @@ function computeKPIs(rowsAll) {
 
   const personal = rows.filter((r) => r.personal_use);
   const personalSpent = personal.reduce((s, r) => s + (r.cost || 0), 0);
-
+  const avgDaystoSell = avgDaysToSell(rows);
+  const inTransitCount = countInTransit(rows);
+  const inTransitValue = transitValue(rows);
+  const avgTransitDaysValue = avgTransitDays(rows, { excludePersonal: true });
   const roi =
     sold.length > 0
       ? totalProfit /
@@ -407,6 +416,10 @@ function computeKPIs(rowsAll) {
     turnoverReal,
     turnoverEstimated,
     missingExpectedTurnoverCount,
+    avgDaystoSell,
+    inTransitCount,
+    inTransitValue,
+    avgTransitDaysValue,
   };
 }
 
@@ -431,6 +444,22 @@ function renderKPIs(k) {
       title: "Profit revente (réel)",
       value: euro(k.totalProfit),
       sub: `ROI: ${(k.roi * 100).toFixed(1)}%`,
+    },
+    {
+      title: "Temps moyen de vente",
+      value: k.avgDaystoSell !== null ? `${k.avgDaystoSell.toFixed(1)} j` : "—",
+      sub: "Livraison → revente",
+    },
+    {
+      title: "Produits en transit",
+      value: euro(k.inTransitValue),
+      sub: `${k.inTransitCount} produits en attente de réception`,
+    },
+    {
+      title: "Temps moyen de transit",
+      value:
+        k.avgTransitDaysValue !== null ? `${k.avgTransitDaysValue.toFixed(1)} j` : "—",
+      sub: "Commande → réception",
     },
     {
       title: "Stock (à revendre)",
@@ -472,6 +501,26 @@ function renderKPIs(k) {
   `
     )
     .join("");
+}
+
+function avgDaysToSell(items) {
+  const sold = items.filter(
+    (i) => !i.personal_use && i.delivery_date && i.resale_date
+  );
+
+  if (sold.length === 0) return null;
+
+  const days = sold.map((i) => {
+    const d1 = new Date(i.delivery_date);
+    const d2 = new Date(i.resale_date);
+    return (d2 - d1) / (1000 * 60 * 60 * 24);
+  });
+
+  return days.reduce((a, b) => a + b, 0) / days.length;
+}
+
+function countInTransit(items) {
+  return items.filter((i) => !i.delivery_date).length;
 }
 
 function buildMonthlySeries(rows) {
@@ -565,7 +614,7 @@ function renderAllChart(rows) {
 }
 
 function renderCharts(rows) {
- /* const s = buildMonthlySeries(rows);
+  /* const s = buildMonthlySeries(rows);
 
   if (chartSpend) chartSpend.destroy();
   chartSpend = new Chart(el("chartSpend"), {
@@ -581,8 +630,28 @@ function renderCharts(rows) {
     options: { responsive: true, plugins: { legend: { display: false } } },
   });*/
 
- // renderCashflowChart(rows);
+  // renderCashflowChart(rows);
   renderAllChart(rows);
+}
+
+function avgTransitDays(items, { excludePersonal = false } = {}) {
+  const now = new Date();
+
+  const rows = items.filter(i => {
+    if (!i.order_date) return false;
+    if (excludePersonal && i.personal_use) return false;
+    return true;
+  });
+
+  if (rows.length === 0) return null;
+
+  const days = rows.map(i => {
+    const start = new Date(i.order_date);
+    const end = i.delivery_date ? new Date(i.delivery_date) : now;
+    return (end - start) / 86400000; // ms → jours
+  });
+
+  return days.reduce((a, b) => a + b, 0) / days.length;
 }
 
 function renderTable(rows) {
@@ -596,12 +665,8 @@ function renderTable(rows) {
         r.items_text ?? "—"
       ).slice(0, 80)}${(r.items_text ?? "").length > 80 ? "…" : ""}</td>
         <td>${r.order_number ?? "—"}</td>
-        <td>${
-          r.personal_use
-            ? `<span class="pill">oui</span>`
-            : `<span class="pill">non</span>`
-        }</td>
         <td class="right">${euro(r.cost)}</td>
+        <td class="right">${r.delivery_date ?? "—"}</td>
         <td class="right">${
           r.expected_resale_price !== null ? euro(r.expected_resale_price) : "—"
         }</td>
@@ -611,7 +676,7 @@ function renderTable(rows) {
         <td>
         <td class="right">${profit !== null ? euro(profit) : "—"}</td>
         <td>
-          ${r.personal_use ? "" : `<button data-edit="${r.id}">Éditer</button>`}
+          <button data-edit="${r.id}">Éditer</button>
         </td>
       </tr>
     `;
@@ -628,6 +693,11 @@ async function openEdit(id) {
   // 1) Prix de revente estimé
   const expected = prompt("Revente estimé (€) :", "");
   if (expected === null) return;
+
+  const delivery_date = prompt(
+    "Date de livraison (YYYY-MM-DD) (laisser vide si pas recu):"
+  );
+  if (delivery_date === null) return;
 
   // 2) Prix de revente réel (optionnel)
   const resale = prompt(
@@ -648,6 +718,7 @@ async function openEdit(id) {
       expected.trim() === "" ? null : String(expected).trim(),
     resale_price: resale.trim() === "" ? null : String(resale).trim(),
     resale_date: resaleDate.trim() === "" ? null : resaleDate.trim(),
+    delivery_date: delivery_date.trim() === "" ? null : delivery_date.trim(),
   };
 
   // petite cohérence : si pas de prix réel, on force la date à null
