@@ -658,85 +658,65 @@ function renderTable(rows) {
   tbodyEl.innerHTML = rows
     .map((r) => {
       const profit = r.resale !== null ? r.resale - (r.cost || 0) : null;
+
+      const safeTitle = (r.items_text ?? "").replaceAll('"', "'");
+
       return `
-      <tr>
+      <tr data-row-id="${r.id}">
         <td>${r.order_date ?? "—"}</td>
-        <td title="${(r.items_text ?? "").replaceAll('"', "'")}">${(
-        r.items_text ?? "—"
-      ).slice(0, 80)}${(r.items_text ?? "").length > 80 ? "…" : ""}</td>
+
+        <!-- Produit (editable) -->
+        <td
+          title="${safeTitle}"
+          data-edit-field="items_text"
+          data-id="${r.id}"
+          class="editable"
+        >${(r.items_text ?? "—").slice(0, 80)}${(r.items_text ?? "").length > 80 ? "…" : ""}</td>
+
         <td>${r.order_number ?? "—"}</td>
+
         <td class="right">${euro(r.cost)}</td>
-        <td class="right">${r.delivery_date ?? "—"}</td>
-        <td class="right">${
-          r.expected_resale_price !== null ? euro(r.expected_resale_price) : "—"
-        }</td>
-        <td class="right">${r.resale !== null ? euro(r.resale) : "—"}</td>
-        <td>${r.resale_date ?? "—"}</td>
-        <td class="right">${euro(r.expected_resale_price - (r.cost || 0))}</td>
-        <td>
+
+        <!-- Livraison (editable) -->
+        <td
+          class="right editable"
+          data-edit-field="delivery_date"
+          data-id="${r.id}"
+        >${r.delivery_date ?? "—"}</td>
+
+        <!-- Estimation (editable) -->
+        <td
+          class="right editable"
+          data-edit-field="expected_resale_price"
+          data-id="${r.id}"
+        >${r.expected_resale_price !== null ? euro(r.expected_resale_price) : "—"}</td>
+
+        <!-- Vente (editable) -->
+        <td
+          class="right editable"
+          data-edit-field="resale_price"
+          data-id="${r.id}"
+        >${r.resale !== null ? euro(r.resale) : "—"}</td>
+
+        <!-- Date vente (editable) -->
+        <td
+          class="editable"
+          data-edit-field="resale_date"
+          data-id="${r.id}"
+        >${r.resale_date ?? "—"}</td>
+
+        <td class="right">${euro((toNumber(r.expected_resale_price) ?? 0) - (r.cost || 0))}</td>
+
         <td class="right">${profit !== null ? euro(profit) : "—"}</td>
-        <td>
-          <button data-edit="${r.id}">Éditer</button>
-        </td>
+
       </tr>
     `;
     })
     .join("");
 
-  // bind edit buttons
-  tbodyEl.querySelectorAll("button[data-edit]").forEach((btn) => {
-    btn.addEventListener("click", () => openEdit(btn.dataset.edit));
-  });
+  // bouton existant
 }
 
-async function openEdit(id) {
-  // 1) Prix de revente estimé
-  const expected = prompt("Revente estimé (€) :", "");
-  if (expected === null) return;
-
-  const delivery_date = prompt(
-    "Date de livraison (YYYY-MM-DD) (laisser vide si pas recu):"
-  );
-  if (delivery_date === null) return;
-
-  // 2) Prix de revente réel (optionnel)
-  const resale = prompt(
-    "Prix de revente réel (€) (laisser vide si pas vendu) :",
-    ""
-  );
-  if (resale === null) return;
-
-  // 3) Date de revente (optionnel)
-  const resaleDate = prompt(
-    "Date de revente (YYYY-MM-DD) (laisser vide si pas vendu) :",
-    ""
-  );
-  if (resaleDate === null) return;
-
-  const payload = {
-    expected_resale_price:
-      expected.trim() === "" ? null : String(expected).trim(),
-    resale_price: resale.trim() === "" ? null : String(resale).trim(),
-    resale_date: resaleDate.trim() === "" ? null : resaleDate.trim(),
-    delivery_date: delivery_date.trim() === "" ? null : delivery_date.trim(),
-  };
-
-  // petite cohérence : si pas de prix réel, on force la date à null
-  if (payload.resale_price === null) payload.resale_date = null;
-
-  const { error } = await supabaseClient
-    .from("purchases")
-    .update(payload)
-    .eq("id", id)
-    .select("*");
-
-  if (error) {
-    alert("Erreur update: " + error.message);
-    return;
-  }
-
-  await loadAndRender();
-}
 
 async function loadAndRender() {
   try {
@@ -765,12 +745,114 @@ async function loadAndRender() {
   }
 }
 
+async function editCell(td) {
+  const id = td.dataset.id;
+  const field = td.dataset.editField;
+
+  // valeur actuelle affichée (on préfère relire depuis le dataset si tu veux)
+  const currentText = td.textContent.trim();
+  const current = currentText === "—" ? "" : currentText;
+
+  // message par champ
+  const labelByField = {
+    items_text: "Produit (texte)",
+    delivery_date: "Date de livraison (YYYY-MM-DD) (vide = pas reçu)",
+    expected_resale_price: "Prix estimé (€) (vide = null)",
+    resale_price: "Prix de vente (€) (vide = pas vendu)",
+    resale_date: "Date de vente (YYYY-MM-DD) (vide = null)",
+  };
+
+  const msg = labelByField[field] ?? field;
+  const raw = prompt(msg + " :", current);
+  if (raw === null) return; // cancel
+
+  const value = raw.trim();
+
+  // validation light
+  const isDateField = field === "delivery_date" || field === "resale_date";
+  const isPriceField = field === "expected_resale_price" || field === "resale_price";
+
+  if (isDateField && value !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    alert("Format attendu: YYYY-MM-DD");
+    return;
+  }
+
+  if (isPriceField && value !== "") {
+    const n = toNumber(value);
+    if (n === null) {
+      alert("Prix invalide.");
+      return;
+    }
+  }
+
+  const payload = {};
+  payload[field] = value === "" ? null : (isPriceField ? String(toNumber(value)) : value);
+
+  // cohérence : si on supprime le prix de vente => date vente = null
+  if (field === "resale_price" && payload.resale_price === null) {
+    payload.resale_date = null;
+  }
+
+  // cohérence : si on set une date de vente mais pas de prix -> tu peux choisir de refuser
+  if (field === "resale_date") {
+    // si on met une date, on peut exiger un prix déjà présent (sinon incohérent)
+    // -> version soft: juste warning
+    // (tu peux aussi bloquer si tu veux)
+  }
+
+  const { error } = await supabaseClient
+    .from("purchases")
+    .update(payload)
+    .eq("id", id)
+    .select("*");
+
+  if (error) {
+    alert("Erreur update: " + error.message);
+    return;
+  }
+
+  await loadAndRender();
+}
+
+
 // ==== EVENTS ====
 el("btnLogin").addEventListener("click", login);
 el("btnLogout").addEventListener("click", logout);
 el("btnReload").addEventListener("click", loadAndRender);
 el("q").addEventListener("input", loadAndRender);
 el("view").addEventListener("change", loadAndRender);
+tbodyEl.addEventListener("contextmenu", (e) => {
+  const td = e.target.closest("td[data-edit-field][data-id]");
+  if (!td) return;
+
+  e.preventDefault(); // bloque le menu clic droit navigateur
+  editCell(td);
+});
+
+let hadTouch = false;
+window.addEventListener("touchstart", () => (hadTouch = true), { passive: true });
+let lastTap = { t: 0, td: null };
+
+tbodyEl.addEventListener("click", (e) => {
+  if (!hadTouch) return; // desktop => on laisse dblclick faire le job
+
+  const td = e.target.closest("td[data-edit-field][data-id]");
+  if (!td) return;
+
+  const now = Date.now();
+  const isDouble = lastTap.td === td && (now - lastTap.t) < 300;
+  lastTap = { t: now, td };
+
+  if (isDouble) editCell(td);
+});
+
+
+// bonus: double clic
+tbodyEl.addEventListener("dblclick", (e) => {
+  const td = e.target.closest("td[data-edit-field][data-id]");
+  if (!td) return;
+  editCell(td);
+});
 
 // ==== START ====
 (async function init() {

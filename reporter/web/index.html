@@ -87,6 +87,14 @@
       #chartAll {
         height: 220px !important;
       }
+      td.editable { cursor: context-menu; }
+      td.editable:hover { outline: 1px dashed rgba(255,255,255,.25); }
+      td.editable {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+      }
+
     </style>
   </head>
   <body>
@@ -145,7 +153,6 @@
               <th>Date revente</th>
               <th class="right">Profit estimé (€)</th>
               <th class="right">Profit (€)</th>
-              <th></th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
