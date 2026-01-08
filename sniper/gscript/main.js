@@ -1,10 +1,8 @@
-/***** RCZ — INBOX ENRICHED (mail → parse HTML → fetch RCZ → tri → 1 mail/article) *****/
-
 /***** ========== CONFIG ========== *****/
 const LABEL_NAME              = 'rcz_nl';
 const DONE_LABEL_NAME         = 'rcz_nl/_done';
 const MAX_THREADS_PER_RUN     = 3;
-const MAX_ITEMS_PER_THREAD    = 5;
+const MAX_ITEMS_PER_THREAD    = 50;
 const SLEEP_MS_FETCH          = 400;
 const SEND_ONE_MAIL_PER_ITEM  = true;
 const RECIPIENT               = Session.getActiveUser().getEmail();
@@ -131,7 +129,7 @@ function processRczEmails() {
         // --- Enrichissement RCZ ---
         let urlNorm = p.link || '';
         if (/rczbikeshop\.com|rcz.*?shop\.com/i.test(urlNorm)) {
-          urlNorm = normalizeRczUrl_(urlNorm, 'fr'); // normalisation "à sec"
+          urlNorm = normalizeRczUrl_(urlNorm); // normalisation "à sec"
         }
 
         if (!urlNorm) {
@@ -151,7 +149,7 @@ function processRczEmails() {
             p.title           = meta.title || p.title || p.rawDescription || 'Article RCZ';
             p.pageDescription = meta.description || '';
             p.image           = meta.image || '';
-            p.canonical       = meta.canonical || urlNorm;
+          //  p.canonical       = meta.canonical || urlNorm;
             if (score < 0.35) {
               log('   ⚠️  faible concordance → suppression image');
               p.image = '';
@@ -162,9 +160,9 @@ function processRczEmails() {
         // --- IA ---
         try {
           const prodName = p.title || p.rawDescription || '';
-          const ai = classifyBikeProductStructured_(prodName); // {usage,type,resume}
+          //const ai = classifyBikeProductStructured_(prodName); // {usage,type,resume}
           p.usageRaw   = ai.usage || '';
-          p.usageNorm  = normalizeCategory(ai.usage);
+          p.usageNorm  = ''; //normalizeCategory(ai.usage);
           p.usageFinal = p.usageNorm || 'Autre';
           p.resumeIA_fr   = ai.resume_fr || '';
           p.resumeIA_en   = ai.resume_en || '';
@@ -194,34 +192,13 @@ function processRczEmails() {
 
       p.token = token;
       // Telegram
-        const cats = resolveMainCategory(p.usageNorm);
 
-        cats.forEach((cat, i) => {
           if (i > 0) Utilities.sleep(1100); // anti-flood
           try{
-            publishDealWithImage(cat, p);
+            publishDealWithImage('mtb', p);
           }catch(e){
             log(`   ⚠️ send TG KO (${e})`);
           }
-        });
-      
-        const subjectOut = buildSubject_(p);
-        const htmlOut    = buildItemEmailHtml_(p, displayIndexBase + i + 1);
-        try {
-          GmailApp.sendEmail(RECIPIENT, subjectOut, stripHtml_(htmlOut), {
-            name: SENDER_NAME,
-            htmlBody: htmlOut
-          });
-          totalSent++;
-          sentNow++;
-          log(`   ✉️  SEND #${totalSent}: ${subjectOut}`);
-        } catch (e) {
-          log(`   ⚠️ send KO (${e}) → création brouillon`);
-          GmailApp.createDraft(RECIPIENT, subjectOut, stripHtml_(htmlOut), {
-            name: SENDER_NAME, htmlBody: htmlOut
-          });
-        }
-
 
         // --- Mémorisation dédoublon IMMÉDIATE (pré + post) ---
         const allKeys = keyCandidatesPost_(p); // inclut les clés pré + canonical
@@ -262,7 +239,9 @@ function processRczEmails() {
           p.compatible,
           p.image,
           p.token,
-          p.discountPct
+          p.discountPct,
+          p.validUntil,
+          p.stockDelayDays
         );
 
         Utilities.sleep(SLEEP_MS_FETCH);
@@ -318,7 +297,7 @@ function keyCandidatesPre_(p) {
   try {
     const maybeRcz = /rczbikeshop\.com|rcz.*?shop\.com/i.test(raw);
     if (maybeRcz) {
-      const norm = normalizeRczUrl_(raw, 'fr').toLowerCase().trim();
+      const norm = normalizeRczUrl_(raw).toLowerCase().trim();
       if (norm) out.add(norm);
     }
   } catch(_) {}
@@ -343,17 +322,32 @@ function keyCandidatesPost_(p) {
 }
 
 /***** ========== ENRICHISSEMENT RCZ ========== *****/
-function normalizeRczUrl_(u, lang) {
+function normalizeRczUrl_(u) {
   try {
     const url = new URL(u);
-    if (/go\.mail-coach\.com/i.test(url.hostname)) return u; // on ne peut pas résoudre sans fetch
-    if (!/^\/(fr|en|de)\//i.test(url.pathname)) {
-      url.pathname = '/' + (lang || 'fr') + url.pathname.replace(/^\/+/, '/');
+
+    // liens de tracking → on ne touche pas
+    if (/go\.mail-coach\.com/i.test(url.hostname)) return u;
+
+    // 🔒 forcer /default/ comme langue unique
+    url.pathname = url.pathname
+      .replace(/^\/(fr|en|de|es|it|pt|ru)\//i, '/default/')
+      .replace(/^\/+/, '/');
+
+    if (!/^\/default\//i.test(url.pathname)) {
+      url.pathname = '/default/' + url.pathname.replace(/^\/+/, '');
     }
-    ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','mc_cid','mc_eid','trk','ref']
-      .forEach(k => url.searchParams.delete(k));
+
+    // supprimer tous les trackers
+    [
+      'utm_source','utm_medium','utm_campaign','utm_term','utm_content',
+      'mc_cid','mc_eid','trk','ref'
+    ].forEach(k => url.searchParams.delete(k));
+
     return url.toString();
-  } catch { return u; }
+  } catch {
+    return u;
+  }
 }
 
 function safeFetch_(url) {
@@ -508,8 +502,7 @@ function resetRczMemory() {
   const props = PropertiesService.getScriptProperties();
   props.deleteProperty(SEEN_MSGS_KEY);
   props.deleteProperty(SEEN_ITEMS_KEY);
+  props.deleteProperty("RCZ_RUNNING");
   log('🗑️ Mémoire RCZ vidée (messages & items)');
 }
-
-
 

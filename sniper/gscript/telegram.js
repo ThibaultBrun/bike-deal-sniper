@@ -10,11 +10,11 @@
 const CHAT_IDS = {
   mtb: {
     fr: "-1002742932352",
-    en: "-1003183690292",
-    de: "-1003161099882",
-    it: "-1003139844241",
-    pt: "-1003186055556",
-    es: "-1003125828603"
+   // en: "-1003183690292",
+    //de: "-1003161099882",
+    //it: "-1003139844241",
+    //pt: "-1003186055556",
+    //es: "-1003125828603"
   }
 };
 
@@ -73,6 +73,7 @@ function httpPostJsonWithRetry_(url, obj, maxRetry=5) {
 
 // Formatte la légende (caption) d’un deal propre en HTML, adaptée à la langue
 function formatDealCaption_(deal, lang = "en") {
+  Logger.log(deal);
   // Sélection de la description AI selon la langue (fallback sur FR)
   const descKey = `desc_ai_${lang}`;
   const desc = deal[descKey] || deal.desc_ai_en || "";
@@ -90,6 +91,10 @@ function formatDealCaption_(deal, lang = "en") {
   // Description IA (facultative)
   const descBlock = desc ? `\n${escapeHtml_(desc)}` : "";
 
+const delay = deal.stockDelayDays ?? "-"; // accepte 0
+
+
+
   return [
     `<b>${escapeHtml_(deal.title || "Deal RCZ")}</b>`,
     priceNow && priceOld
@@ -97,7 +102,7 @@ function formatDealCaption_(deal, lang = "en") {
       : priceNow
       ? `<b>${priceNow}</b>`
       : "",
-    `<code>#${deal.category || "autre"}</code>${store}`,
+`<code>Délai d’approvisionnement : ${delay}J</code>${store}`,
     descBlock,
     note,
   ]
@@ -139,6 +144,7 @@ function resolveChatIds_(category) {
 }
 
 function publishDealWithImage(c, deal) {
+
   if (!deal || !deal.image) throw new Error('deal.image requis (URL publique ou file_id).');
 
   const categoryChats = CHAT_IDS[c];

@@ -54,7 +54,9 @@ function insertDeal(
   compatible_ai,
   image,
   token,
-  prct_discount
+  prct_discount,
+  validUntil,
+  stockDelay
 ) {
   const props = PropertiesService.getScriptProperties();
   const SUPABASE_URL = props.getProperty('SUPABASE_URL');
@@ -82,7 +84,10 @@ function insertDeal(
     compatible_ai,
     image,
     token,
-    prct_discount
+    prct_discount,
+    updated_at: new Date().toISOString(),
+    valid_until : validUntil,
+    stock_delay : stockDelay
   };
 
   try {
@@ -114,7 +119,7 @@ function insertDeal(
     }
 
     // --- Étape 2 : envoi de l’INSERT avec le JWT du bot ---
-    const res = UrlFetchApp.fetch(`${SUPABASE_URL}/rest/v1/deals`, {
+    const res = UrlFetchApp.fetch(`${SUPABASE_URL}/rest/v1/deals?on_conflict=id`, {
       method: 'post',
       headers: {
         apikey: SUPABASE_ANON_KEY,            // toujours requis
@@ -129,7 +134,11 @@ function insertDeal(
     const code = res.getResponseCode();
     const text = res.getContentText();
 
+    Logger.log(payload);
+
+Logger.log('code : ' + code + ' text : ' + text );
     if (code >= 200 && code < 300) {
+
       const json = JSON.parse(text);
       Logger.log('✅ Insertion réussie : ' + JSON.stringify(json, null, 2));
       return json[0];
@@ -193,7 +202,9 @@ function insertDealTest() {
     compatible_ai,
     image,
     token,
-    prct_discount
+    prct_discount,
+    p.validUntil,
+    p.stockDelayDays
   );
 
   Logger.log(deal);
@@ -222,4 +233,191 @@ function debugBotUid() {
   Logger.log('🔎 auth.uid() = ' + json.sub);
 }
 
+function getBotAccessToken_() {
+  const props = PropertiesService.getScriptProperties();
+  const SUPABASE_URL = props.getProperty('SUPABASE_URL');
+  const SUPABASE_ANON_KEY = props.getProperty('SUPABASE_ANON_KEY');
+  const BOT_EMAIL = props.getProperty('SUPABASE_BOT_EMAIL');
+  const BOT_PASSWORD = props.getProperty('SUPABASE_BOT_PASSWORD');
+
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get('SUPABASE_BOT_JWT');
+  if (cached) return cached;
+
+  const loginRes = UrlFetchApp.fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: 'post',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json'
+    },
+    payload: JSON.stringify({ email: BOT_EMAIL, password: BOT_PASSWORD }),
+    muteHttpExceptions: true
+  });
+
+  const code = loginRes.getResponseCode();
+  const txt = loginRes.getContentText();
+  if (code >= 300) {
+    throw new Error(`Bot auth failed HTTP ${code}: ${txt}`);
+  }
+
+  const data = JSON.parse(txt);
+  if (!data.access_token) throw new Error('No access_token returned by Supabase auth.');
+
+  // data.expires_in est en secondes (souvent 3600). On met un peu moins.
+  const ttl = Math.max(60, (data.expires_in || 3600) - 120);
+  cache.put('SUPABASE_BOT_JWT', data.access_token, ttl);
+
+  return data.access_token;
+}
+
+function getActiveAvailableProducts() {
+  const props = PropertiesService.getScriptProperties();
+  const SUPABASE_URL = props.getProperty('SUPABASE_URL');
+  const SUPABASE_ANON_KEY = props.getProperty('SUPABASE_ANON_KEY');
+
+  const jwt = getBotAccessToken_();
+
+  // équivalent CURRENT_DATE (Europe/Paris)
+  const today = Utilities.formatDate(new Date(), "Europe/Paris", "yyyy-MM-dd");
+
+  const endpoint =
+    `${SUPABASE_URL}/rest/v1/deals` +
+    `?select=id,url` +
+    `&available=eq.true` +
+    `&valid_until=gte.${encodeURIComponent(today)}` +
+    `&order=valid_until.asc`;
+
+  const res = UrlFetchApp.fetch(endpoint, {
+    method: 'get',
+    muteHttpExceptions: true,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,          // OK: clé publique requise par Supabase
+      Authorization: `Bearer ${jwt}`,     // IMPORTANT: JWT du bot (authenticated)
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const status = res.getResponseCode();
+  const body = res.getContentText();
+  if (status < 200 || status >= 300) {
+    throw new Error(`Supabase REST error HTTP ${status}: ${body}`);
+  }
+
+  const rows = JSON.parse(body || "[]");
+  return rows.map(r => ({ id: r.id, url: r.url }));
+}
+
+
+function updateProductAvailableFlag(id, available) {
+  const props = PropertiesService.getScriptProperties();
+  const SUPABASE_URL = props.getProperty('SUPABASE_URL');
+  const SUPABASE_ANON_KEY = props.getProperty('SUPABASE_ANON_KEY');
+
+  const jwt = getBotAccessToken_();
+
+  const endpoint = `${SUPABASE_URL}/rest/v1/deals?id=eq.${encodeURIComponent(id)}`;
+
+  const res = UrlFetchApp.fetch(endpoint, {
+    method: 'patch',
+    muteHttpExceptions: true,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal'
+    },
+    payload: JSON.stringify({
+      available: available,
+      updated_at: new Date().toISOString()
+    })
+  });
+
+  const code = res.getResponseCode();
+  if (code < 200 || code >= 300) {
+    Logger.log(`❌ Update failed for ${id}: ${code} ${res.getContentText()}`);
+  } else {
+    Logger.log(`✅ Updated ${id} → available=${available}`);
+  }
+}
+
+/**
+ * Récupère les deals "encore actifs" depuis Supabase.
+ * On prend title + champs IA existants pour pouvoir skipper.
+ */
+function getActiveDealsForAi_() {
+  const props = PropertiesService.getScriptProperties();
+  const SUPABASE_URL = props.getProperty('SUPABASE_URL');
+  const SUPABASE_ANON_KEY = props.getProperty('SUPABASE_ANON_KEY');
+  const jwt = getBotAccessToken_();
+
+  // "Aujourd'hui" Europe/Paris (comme tu fais déjà)
+  const today = Utilities.formatDate(new Date(), "Europe/Paris", "yyyy-MM-dd");
+
+  // Champs nécessaires
+  const select = [
+    'id',
+    'title',
+    'valid_until',
+    'available',
+    'item_type',
+    'category',
+    'desc_ai_fr'
+  ].join(',');
+
+  // Active = valid_until >= today
+  // (Tu peux ajouter available=eq.true si tu veux uniquement les produits en stock)
+const endpoint =
+  `${SUPABASE_URL}/rest/v1/deals` +
+  `?select=${encodeURIComponent(select)}` +
+  `&valid_until=gte.${encodeURIComponent(today)}` +
+  `&or=(desc_ai_fr.is.null,desc_ai_fr.eq.)` +
+  `&order=valid_until.asc`;
+
+  const res = UrlFetchApp.fetch(endpoint, {
+    method: 'get',
+    muteHttpExceptions: true,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  const status = res.getResponseCode();
+  const body = res.getContentText();
+  if (status < 200 || status >= 300) {
+    throw new Error(`Supabase REST error HTTP ${status}: ${body}`);
+  }
+
+  return JSON.parse(body || '[]');
+}
+
+/**
+ * Patch un deal (id) avec les champs IA.
+ */
+function patchDealAiFields_(id, patch) {
+  const props = PropertiesService.getScriptProperties();
+  const SUPABASE_URL = props.getProperty('SUPABASE_URL');
+  const SUPABASE_ANON_KEY = props.getProperty('SUPABASE_ANON_KEY');
+  const jwt = getBotAccessToken_();
+
+  const endpoint = `${SUPABASE_URL}/rest/v1/deals?id=eq.${encodeURIComponent(id)}`;
+
+  const res = UrlFetchApp.fetch(endpoint, {
+    method: 'patch',
+    muteHttpExceptions: true,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=minimal'
+    },
+    payload: JSON.stringify(Object.assign({}, patch, { updated_at: new Date().toISOString() }))
+  });
+
+  const code = res.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error(`Patch failed for ${id}: HTTP ${code}: ${res.getContentText()}`);
+  }
+}
 

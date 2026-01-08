@@ -1,11 +1,40 @@
 // === CONFIG GEMINI ===
 const GEMINI_MODEL   = 'gemini-2.5-flash';
-const GEMINI_RPM     = 15;
+const GEMINI_RPM     = 50;
+const AI_ONLY_IF_MISSING = true;      // true = enrichit seulement si champs vides
+const AI_LIMIT_PER_RUN   = 50;        // sécurité : limite d’items par exécution
+const AI_CACHE_TTL_SEC   = 1; // 14 jours
 
 /***** ========== IA (JSON strict + normalisation) ========== *****/
 // Fenêtre RPM (glissante 60s)
 let _geminiWindowStart = 0;
 let _geminiCountThisWindow = 0;
+
+function geminiListModels_() {
+  const props = PropertiesService.getScriptProperties();
+  const key = props.getProperty('GEMINI_API_KEY');
+  const url = `https://generativelanguage.googleapis.com/v1/models?key=${encodeURIComponent(key)}`;
+
+  const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  const code = res.getResponseCode();
+  if (code !== 200) throw new Error(`ListModels HTTP ${code}: ${res.getContentText()}`);
+
+  const data = JSON.parse(res.getContentText());
+  return data.models || [];
+}
+
+function geminiPickModelForGenerateContent() {
+  const models = geminiListModels_();
+  const ok = models.filter(m => (m.supportedGenerationMethods || []).includes('generateContent'));
+  // Priorité “flash” (rapide/moins cher) si dispo
+  const prefer = ok.find(m => (m.name || '').includes('flash')) || ok[0];
+  if (!prefer) throw new Error('Aucun modèle ne supporte generateContent pour cette clé.');
+  Logger.log(prefer.name);
+  return prefer.name;
+}
+
+
+
 function geminiRateGate_() {
   const now = Date.now();
   if (now - _geminiWindowStart >= 60000) {
@@ -25,7 +54,7 @@ function geminiRateGate_() {
 function geminiModelCandidates_() {
   const m = (GEMINI_MODEL || '').trim();
   const base = m.endsWith('-latest') ? m.slice(0, -7) : m;
-  return [base + '-latest', base, 'gemini-1.5-flash-latest', 'gemini-2.5-flash'];
+  return ['gemini-2.5-flash'];
 }
 
 function geminiGenerate_(prompt) {
@@ -116,30 +145,19 @@ Tu es un expert en vélo.
 Analyse le produit ci-dessous et réponds UNIQUEMENT en JSON compact.
 
 Contraintes :
-- "type" = famille (roue alu arriere, roue alu avant, roue carbone arriere, roue carbone avant, fourche, amortisseur, pédales, chaussures, vélo complet, kit cadre, tige de selle, transmission, frein, pneu, cintre, potence, casque, textile, outil, etc.)
+- "type" = famille (roue alu arriere, roue alu avant, roue carbone arriere, roue carbone avant, fourche, amortisseur, pédales, chaussures, vélo complet, kit cadre, cadre, tige de selle, transmission, frein, pneu, cintre, potence, casque, textile, outil, etc.)
 - "usage" doit être UNE valeur parmi :
   Route, Gravel, XC, Trail / All-Mountain, Enduro, DH / Bike Park,
   E-MTB Trail / All-Mountain, E-MTB Enduro, E-MTB Autre,
   Accessoires génériques, Autre
-- "resume_fr" : petit article court de 4 à 5 lignes max facon vendeur de vélo. 
+- "resume" : petit article court de 4 à 5 lignes max facon vendeur de vélo. 
   Inclure :
   • Description rapide du produit et son usage (3-4 lignes). si possible ajouter le poid. 
   • Comparaison avec 1–2 concurrents connus (Shimano, SRAM, Fox, RockShox, Magura, DT Swiss, Maxxis, Schwalbe, etc.).
   • Positionnement de gamme (entrée/milieu/haut).
-- "resume_en" : le même article mais en anglais
-- "resume_de" : le même article en allemant
-- "resume_es" : le même article en espagnol
-- "resume_it" : le même article en italien
-- "resume_ru" : le même article en russe
-- "resume_pt" : le même article en portugais
-  - "compatible" : la compatibilité avec les vélos suivants
-  • compatibilité orbea rise 2023 endurisé ( fourche 29 150mm / amortisseur 210*55 / transmission ms 12s / roues 29 alu légère et solide (enduro) ms  )
-  • compatibilité rocky mountain reaper 24 ( fourche 26 120-130mm / amortisseur 165x38 /  transmission hg 10s / roues 24 / tige de selle telescopique < 125mm  30.9   )
-
-  • compatibilité specicialized enduro comp 2016 650b ( fourche 27.5 160-170mm / amortisseur 216x63 / transmission gx 11s / roues 27.5 )
-
+  • Estimer le poid du composant
 Format de sortie STRICT :
-{"usage":"<valeur>","type":"<type>","resume":"<texte en 4-5 lignes max>","compatible":"<le texte sur la compatibilité>"}
+{"usage":"<valeur>","type":"<type>","resume":"<texte en 10 lignes max>"}
 
 Produit : ${productName}`;
 
@@ -148,17 +166,10 @@ Produit : ${productName}`;
     const parsed = tryParseStrictJson_(out);
     if (parsed) {
       const normalized = normalizeCategory(parsed.usage) || parsed.usage || "Autre";
+      const type = parsed.type || "Autre";
       const usage = ALLOWED_CATEGORIES.includes(normalized) ? normalized : "Autre";
-      const resume_fr = (parsed.resume_fr || "").toString().trim();
-      const resume_en = (parsed.resume_en || "").toString().trim();
-      const resume_de = (parsed.resume_de || "").toString().trim();
-      const resume_es = (parsed.resume_es || "").toString().trim();
-      const resume_it = (parsed.resume_it || "").toString().trim();
-      const resume_ru = (parsed.resume_ru || "").toString().trim();
-      const resume_pt = (parsed.resume_pt || "").toString().trim();
-      const type = (parsed.type || "").toString().trim();
-      const compatible = (parsed.compatible || "").toString().trim();
-      return { usage, type, resume_fr, resume_en, resume_de, resume_es, resume_it, resume_ru, resume_pt, compatible };
+      const resume = (parsed.resume || "").toString().trim();
+      return { usage, type, resume };
     }
 
     const m = out.match(/usage\s*principal\s*[:\-]\s*(.+)/i);
@@ -170,3 +181,85 @@ Produit : ${productName}`;
     return { usage: "Autre", type: "", resume: "", compatible : "" };
   }
 }
+
+function testai(){
+
+  const ai=classifyBikeProductStructured_("fox 36 150mm 29 grip");
+  Logger.log(JSON.stringify(ai,null,2));
+}
+
+/**
+ * Entry point: boucle sur les deals actifs et enrichit item_type, desc_ai_fr, category.
+ */
+function enrichActiveDealsAi() {
+  const deals = getActiveDealsForAi_();
+  log(`🔎 Deals actifs trouvés: ${deals.length}`);
+
+  const cache = CacheService.getScriptCache();
+  let done = 0, skipped = 0, failed = 0;
+
+  for (const d of deals) {
+    if (done >= AI_LIMIT_PER_RUN) {
+      log(`🛑 Limite AI_LIMIT_PER_RUN atteinte (${AI_LIMIT_PER_RUN}). Stop.`);
+      break;
+    }
+
+    const id = d.id;
+    const title = (d.title || '').toString().trim();
+    if (!id || !title) {
+      skipped++;
+      continue;
+    }
+
+    if (AI_ONLY_IF_MISSING) {
+      const hasType = !!(d.item_type && String(d.item_type).trim());
+      const hasCat  = !!(d.category && String(d.category).trim());
+      const hasDesc = !!(d.desc_ai_fr && String(d.desc_ai_fr).trim());
+      if (hasType && hasCat && hasDesc) {
+        skipped++;
+        continue;
+      }
+    }
+
+    try {
+      let ai;
+
+      ai = classifyBikeProductStructured_(title); // <- ta fonction Gemini
+
+      const item_type = (ai?.type || '').toString().trim();
+      const category  = (ai?.usage || 'Autre').toString().trim(); // tu renvoies "usage" déjà normalisé
+      const desc_ai_fr = (ai?.resume || '').toString().trim();
+
+      const patch = {
+        item_type: item_type || (AI_ONLY_IF_MISSING ? d.item_type : item_type) || null,
+        category: category || (AI_ONLY_IF_MISSING ? d.category : category) || null,
+        desc_ai_fr: desc_ai_fr || (AI_ONLY_IF_MISSING ? d.desc_ai_fr : desc_ai_fr) || null
+      };
+
+      if (AI_ONLY_IF_MISSING) {
+        if (d.item_type && d.item_type.trim()) delete patch.item_type;
+        if (d.category && d.category.trim()) delete patch.category;
+        if (d.desc_ai_fr && d.desc_ai_fr.trim()) delete patch.desc_ai_fr;
+      }
+
+      // Si plus rien à patch
+      const keys = Object.keys(patch);
+      if (!keys.length) {
+        skipped++;
+        continue;
+      }
+
+      patchDealAiFields_(id, patch);
+      done++;
+      log(`✅ ${id} updated | category=${patch.category || d.category} | type=${patch.item_type || d.item_type}`);
+
+    } catch (e) {
+      failed++;
+      log(`❌ ${id} failed: ${e}`);
+      // continue
+    }
+  }
+
+  log(`🏁 Terminé: done=${done}, skipped=${skipped}, failed=${failed}`);
+}
+

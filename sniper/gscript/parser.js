@@ -23,9 +23,46 @@ function extractPromosFromMail_(htmlOrText, opts) {
   const urlTextRe   = /(https?:\/\/[^\s"'<)]+)/ig;
 
   const promos = [];
-  let lastCode = null;
+ // let lastCode = null;
 
   const textOf = (h) => cleanseHtmlToText_(h);
+
+
+function findCodeUntilSectionEnd_(fromIdx, maxAhead = 60) {
+  const end = Math.min(rawBlocks.length - 1, fromIdx + maxAhead);
+
+  for (let k = fromIdx; k <= end; k++) {
+    const t = textOf(rawBlocks[k]);
+
+    // stop section
+    if (/facebook\s+share\s+button/i.test(t)) return null;
+
+    const cm = t.match(codeRe);
+    if (cm) {
+      const c = cm[1].trim().toUpperCase();
+      if (!/^\d{6,}$/.test(c) && !/^[A-Z0-9_-]+(?:\.[A-Z0-9_-]+){2,}$/.test(c)) {
+        return c;
+      }
+    }
+  }
+  return null;
+}
+
+function findValidUntilUntilSectionEnd_(fromIdx, maxAhead = 80) {
+  const end = Math.min(rawBlocks.length - 1, fromIdx + maxAhead);
+
+  for (let k = fromIdx; k <= end; k++) {
+    const t = textOf(rawBlocks[k]);
+
+    // stop section
+    if (/facebook\s+share\s+button/i.test(t)) return null;
+
+    const v = parseValidUntilFr_(t);
+    if (v) return v;
+  }
+  return null;
+}
+
 
   function extractLinksFromBlock(idx) {
     const urls = [];
@@ -54,28 +91,33 @@ function extractPromosFromMail_(htmlOrText, opts) {
     return urls[0] || null;
   }
 
-  function scanCodeAhead(fromIdx) {
-    const end = Math.min(rawBlocks.length - 1, fromIdx + cfg.lookaheadBlocks);
-    for (let j = fromIdx + 1; j <= end; j++) {
-      const t = textOf(rawBlocks[j]);
-      const cm = t.match(codeRe);
-      if (cm) {
-        const c = cm[1].trim().toUpperCase();
-        if (!/^\d{6,}$/.test(c) && !/^[A-Z0-9_-]+(?:\.[A-Z0-9_-]+){2,}$/.test(c)) {
-          log(`     🔭 code repéré en lookahead (bloc#${j+1}): ${c}`);
-          return c;
-        }
+function scanCodeAfterProduct_(fromIdx, maxLookahead = cfg.lookaheadBlocks) {
+  const end = Math.min(rawBlocks.length - 1, fromIdx + maxLookahead);
+  for (let j = fromIdx + 1; j <= end; j++) {
+    const t = textOf(rawBlocks[j]);
+
+    // Stopper si on tombe sur une nouvelle ligne produit => on a dépassé
+    if (priceLineRe.test(t)) return null;
+
+    const cm = t.match(codeRe);
+    if (cm) {
+      const c = cm[1].trim().toUpperCase();
+      if (!/^\d{6,}$/.test(c) && !/^[A-Z0-9_-]+(?:\.[A-Z0-9_-]+){2,}$/.test(c)) {
+        log(`     🔭 code repéré APRES produit (bloc#${j+1}): ${c}`);
+        return c;
       }
     }
-    return null;
   }
+  return null;
+}
 
   for (let bi = 0; bi < rawBlocks.length && promos.length < cfg.maxItems; bi++) {
     const blockHtml = rawBlocks[bi];
     const blockText = textOf(blockHtml);
 
+
     // A) code sticky
-    const cmHere = blockText.match(codeRe);
+   /* const cmHere = blockText.match(codeRe);
     if (cmHere) {
       const c = cmHere[1].trim().toUpperCase();
       if (!/^\d{6,}$/.test(c) && !/^[A-Z0-9_-]+(?:\.[A-Z0-9_-]+){2,}$/.test(c)) {
@@ -84,7 +126,7 @@ function extractPromosFromMail_(htmlOrText, opts) {
       } else {
         log(`     ⚠️  code suspect ignoré (bloc#${bi+1}): ${c}`);
       }
-    }
+    }*/
 
     // B) ligne prix
     const pm = priceLineRe.exec(blockText);
@@ -102,23 +144,68 @@ function extractPromosFromMail_(htmlOrText, opts) {
     const link = findNearbyLink(bi);
 
     // D) code éventuel après
-    let codeForThis = lastCode;
+    let codeForThis = findCodeUntilSectionEnd_(bi, 60); // 10 est plus sûr que 4 sur RCZ
     if (!codeForThis) {
-      const ahead = scanCodeAhead(bi);
-      if (ahead) {
-        codeForThis = ahead;
-        lastCode = ahead;
-      }
+      const cmSame = blockText.match(codeRe);
+      if (cmSame) codeForThis = cmSame[1].trim().toUpperCase();
     }
+
+
+    // E) contexte autour de la promo (stock + validité)
+
+function findStockDelayNearestBefore_(centerIdx, maxBehind = 14) {
+  const start = Math.max(0, centerIdx - maxBehind);
+
+  for (let k = centerIdx; k >= start; k--) {
+    const t = textOf(rawBlocks[k]);
+
+    // frontière de section (ajuste si besoin)
+    if (/facebook\s+share\s+button/i.test(t)) break;
+
+    const d = parseStockDelayDays_(t);
+    if (d != null) return d; // 0 ou N
+  }
+  return null;
+}
+
+function findValidUntilNearestAfter_(centerIdx, maxAhead = 30) {
+  const end = Math.min(rawBlocks.length - 1, centerIdx + maxAhead);
+
+  for (let k = centerIdx; k <= end; k++) {
+    const t = textOf(rawBlocks[k]);
+
+    // si on tombe sur un autre produit, on stoppe
+    if (k > centerIdx && priceLineRe.test(t)) break;
+
+    const v = parseValidUntilFr_(t);
+    if (v) return v;
+  }
+  return null;
+}
+
+
+
+
+const stockDelayDays = findStockDelayNearestBefore_(bi, 14);
+const validUntil     = findValidUntilUntilSectionEnd_(bi, 80);
+
 
     promos.push({
       rawDescription: rawDesc,
       priceNew,
       priceOld,
       code: codeForThis || null,
-      link
+      link,
+      stockDelayDays, // 0 si "en stock"
+      validUntil      // "YYYY-MM-DD 23:59:59" si détecté
     });
-    log(`     ✅ Promo#${promos.length} (bloc#${bi+1}): "${short_(rawDesc)}" ${priceNew}€ -> ${priceOld}€ code=${codeForThis||'—'} link=${link?'yes':'no'}`);
+
+
+    log(
+      `     ✅ Promo#${promos.length} (bloc#${bi+1}): "${short_(rawDesc)}" ` +
+      `${priceNew}€ -> ${priceOld}€ code=${codeForThis||'—'} link=${link?'yes':'no'} ` +
+      `stockDelayDays=${stockDelayDays!=null?stockDelayDays:'—'} validUntil=${validUntil||'—'}`
+    );
   }
 
   if (!promos.length) {
@@ -276,5 +363,63 @@ function resolveMainCategory(usageNorm) {
 
   return ["mtb","road"];
 }
+
+
+function normalizeMonthFr_(m) {
+  return String(m || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\./g, '')
+    .trim();
+}
+
+function monthFrToNumber_(m) {
+  const map = {
+    janvier: 1, fevrier: 2, mars: 3, avril: 4, mai: 5, juin: 6,
+    juillet: 7, aout: 8, septembre: 9, octobre: 10, novembre: 11, decembre: 12
+  };
+  return map[m] || null;
+}
+
+function parseValidUntilFr_(text) {
+  if (!text) return null;
+
+  // capture : "Offres valables jusqu'au mardi 06 Janvier 2026 à minuit"
+  const re = /Offres\s+valables\s+jusqu['’]au\s+(?:\w+\s+)?(\d{1,2})\s+([A-Za-zÀ-ÿ.]+)\s+(\d{4})\s+à\s+minuit/i;
+  const m = String(text).match(re);
+  if (!m) return null;
+
+  const day = parseInt(m[1], 10);
+  const month = monthFrToNumber_(normalizeMonthFr_(m[2]));
+  const year = parseInt(m[3], 10);
+  if (!day || !month || !year) return null;
+
+  // demandé : minuit => fin de journée
+  const yyyy = String(year).padStart(4, '0');
+  const mm = String(month).padStart(2, '0');
+  const dd = String(day).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd} 23:59:59`;
+}
+
+function parseStockDelayDays_(text) {
+
+  const t = (text || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+  // "ces produits sont en stock" => 0
+  if (t.includes('ces produits sont en stock') || t.includes('ce produit est en stock')) {
+    return 0;
+  }
+
+  // "Délais à prévoir :20 jours ouvrables..." => 20
+  const m = t.match(/d[ée]lais?\s*[àa]\s*pr[ée]voir\s*:\s*(\d+)\s*jours?\s*ouvrables?/i);
+  if (m) return parseInt(m[1], 10);
+
+  return null;
+}
+
 
 
