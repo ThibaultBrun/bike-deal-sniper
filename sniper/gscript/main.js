@@ -219,7 +219,7 @@ function processRczEmails() {
 
 
 
-        insertDeal(
+        SUPABASE.insertDeal(
           escapeHtml_(p.canonical || p.link || ''),
           p.title,
           escapeHtml_(p.canonical || p.link || ''),

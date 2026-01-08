@@ -34,7 +34,7 @@ function testRczAvailability() {
 
 
 function updateAvailableProducts() {
-  const PRODUCTS = getActiveAvailableProducts();
+  const PRODUCTS = SUPABASE.getActiveAvailableProducts();
 
   Logger.log(`🔄 Checking ${PRODUCTS.length} products`);
 
@@ -44,7 +44,7 @@ function updateAvailableProducts() {
 
       if (!isAvailable) {
         Logger.log(`🚫 Not available anymore: ${p.id}`);
-        updateProductAvailableFlag(p.id, false);
+        SUPABASE.updateProductAvailableFlag(p.id, false);
       } else {
         Logger.log(`✅ Still available: ${p.id}`);
       }

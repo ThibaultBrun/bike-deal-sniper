@@ -192,7 +192,7 @@ function testai(){
  * Entry point: boucle sur les deals actifs et enrichit item_type, desc_ai_fr, category.
  */
 function enrichActiveDealsAi() {
-  const deals = getActiveDealsForAi_();
+  const deals = SUPABASE.getActiveDealsForAi_();
   log(`🔎 Deals actifs trouvés: ${deals.length}`);
 
   const cache = CacheService.getScriptCache();
@@ -249,7 +249,7 @@ function enrichActiveDealsAi() {
         continue;
       }
 
-      patchDealAiFields_(id, patch);
+      SUPABASE.patchDealAiFields_(id, patch);
       done++;
       log(`✅ ${id} updated | category=${patch.category || d.category} | type=${patch.item_type || d.item_type}`);
 
