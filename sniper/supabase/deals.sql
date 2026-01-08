@@ -22,6 +22,9 @@ create table public.deals (
   desc_ai_it text null,
   desc_ai_ru text null,
   desc_ai_pt text null,
+  valid_until date null,
+  stock_delay numeric null,
+  available boolean null default true,
   constraint deals_pkey primary key (id),
   constraint deals_duplicate_token_key unique (token)
 ) TABLESPACE pg_default;
