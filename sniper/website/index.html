@@ -1,247 +1,156 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Détail du deal</title>
+  <meta name="theme-color" content="#f3f4f6" />
+  <title>Bike Deal Sniper</title>
+  <meta name="description" content="Accède en temps réel aux meilleurs deals RCZ (neuf, OEM, fins de stock)." />
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="logo.png">
 
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7552996355584047"
-    crossorigin="anonymous"></script>
-
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      margin: 0;
-      padding: 2rem;
-    }
-
-    .deal {
-      max-width: 600px;
-      margin: auto;
-      border-radius: 12px;
-      padding: 1rem;
-      box-shadow: 0 4px 20px #0001;
-    }
-
-    img {
-      max-width: 100%;
-      border-radius: 12px;
-      margin-bottom: 1rem;
-    }
-
-    h1 {
-      font-size: 1.5rem;
-      margin: 0.2rem 0;
-    }
-
-    .price {
-      font-weight: bold;
-      color: #008000;
-      font-size: 1.2rem;
-      display: flex;
-      align-items: baseline;
-      gap: .5rem;
-    }
-
-    .old {
-      text-decoration: line-through;
-      color: #888;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: .2rem .5rem;
-      border-radius: 999px;
-      font-weight: 600;
-      font-size: .85rem;
-      background: #e6f6ee;
-      border: 1px solid #bfe7d3;
-      color: #057a55;
-    }
-
-    .row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: .75rem;
-      margin: .5rem 0;
-      flex-wrap: wrap;
-    }
-
-    .coupon {
-      display: inline-flex;
-      align-items: center;
-      gap: .5rem;
-      background: #f6f7fb;
-      border: 1px dashed #c9cde3;
-      padding: .4rem .6rem;
-      border-radius: 10px;
-    }
-
-    .coupon code {
-      font-weight: 700;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    }
-
-    .btn-copy {
-      cursor: pointer;
-      border: 1px solid #c9cde3;
-      background: white;
-      border-radius: 8px;
-      padding: .25rem .5rem;
-      font-size: .85rem;
-    }
-
-    .btn-copy:active {
-      transform: scale(.98);
-    }
-
-    a.cta {
-      display: inline-block;
-      margin-top: .75rem;
-      text-decoration: none;
-      padding: .6rem .9rem;
-      border-radius: 10px;
-      background: black;
-      color: white;
-    }
-
-    /* Ads helpers */
-    .ad {
-      max-width: 728px;
-      margin: 0.75rem auto;
-    }
-
-    .ad--spacer {
-      margin: 1rem auto;
-    }
-  </style>
+     crossorigin="anonymous"></script>
 </head>
 
 <body>
+  <a href="https://rcz-watcher.netlify.app/" class="bannerLink" aria-label="Retour à l’accueil">
 
-  <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-7552996355584047" data-ad-slot="3451488014"
-    data-ad-format="auto" data-full-width-responsive="true"></ins>
-  <script>
-    (adsbygoogle = window.adsbygoogle || []).push({});
-  </script>
+<div class="brand">
+  <img class="brandBanner" src="banner.png" alt="Bike Deal Sniper">
+  <div>
+    <strong id="siteName">Bike Deal Sniper</strong>
+    <small>Accès instantané aux bons plans VTT XC AM ENDURO DH.</small>
+  </div>
+</div>
+</a>
 
-  <div id="deal" class="deal">Chargement...</div>
-
-  <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-7552996355584047" data-ad-slot="3451488014"
-    data-ad-format="auto" data-full-width-responsive="true"></ins>
-  <script>
-    (adsbygoogle = window.adsbygoogle || []).push({});
-  </script>
-
-  <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-7552996355584047" data-ad-slot="3451488014"
-    data-ad-format="auto" data-full-width-responsive="true"></ins>
-  <script>
-    (adsbygoogle = window.adsbygoogle || []).push({});
-  </script>
-
-  <!-- 🟩 Ad #4 : footer -->
-  <footer class="ad ad--spacer">
-    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-7552996355584047" data-ad-slot="3451488014"
-      data-ad-format="auto" data-full-width-responsive="true"></ins>
-    <script>
-      (adsbygoogle = window.adsbygoogle || []).push({});
-    </script>
-  </footer>
-
-  <script>
-    // === Configuration ===
-    const SUPABASE_URL = "https://fgwytagsmcjzrbjhcude.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_Qo1qCBUJpKpF5nzOCKFmqw_TrfzU0Hp";
-
-    // === Lecture du paramètre 'token' dans l'URL ===
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-
-    if (!token) {
-      document.getElementById("deal").textContent = "❌ Aucun token fourni dans l’URL.";
-    } else {
-      loadDeal(token);
-    }
-
-    async function loadDeal(token) {
-      try {
-        const url = `${SUPABASE_URL}/rest/v1/deals?select=*`;
-        const res = await fetch(url, {
-          headers: {
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            "x-deal-token": token, // lu dans la policy RLS
-          },
-        });
-        if (!res.ok) throw new Error(`Erreur HTTP ${res.status}`);
-        const data = await res.json();
-        if (!data.length) {
-          document.getElementById("deal").textContent = "Aucun deal trouvé pour ce token.";
-          return;
-        }
-
-        const d = data[0];
-
-        // Préparation des affichages
-        const priceCurrent = (d.price_current != null) ? `${d.price_current} €` : "";
-        const priceOriginal = (d.price_original != null) ? `${d.price_original} €` : "";
-        const discount = (d.prct_discount != null) ? `-${d.prct_discount}%` : "";
-        const couponHTML = d.coupon_code
-          ? `
-              <div class="coupon">
-                <span>Code&nbsp;promo:</span>
-                <code id="coupon-code">${escapeHtml(d.coupon_code)}</code>
-                <button class="btn-copy" onclick="copyCoupon()">Copier</button>
+    <div class="hero">
+      <div class="hero-inner">
+        <h1>Les bons plans RCZ, en direct.</h1>
+        <p class="lead">
+          Bons plans VTT — pièces & équipements à prix cassés.</strong>.
+        </p>
+        <!-- TOP BLOCKS: ACTIFS + EN STOCK -->
+        <div id="topBlocksAnchor"></div>
+        <div id="topBlocksWrap">
+        <div class="blocks" id="topBlocks" aria-live="polite">
+          <div class="card">
+            <div class="pad">
+              <div class="blockTitle">
+                <strong>🔥 Meilleurs deals actifs</strong>
+                <span class="pill" style="padding:6px 10px;">Tri : % remise</span>
               </div>
-            `
-          : "";
-
-        document.getElementById("deal").innerHTML = `
-            ${d.image ? `<img src="${escapeAttr(d.image)}" alt="${escapeAttr(d.title || 'Image produit')}">` : ""}
-            <div class="row">
-              <h1>${escapeHtml(d.title || "")}</h1>
-              ${discount ? `<span class="badge">${discount}</span>` : ""}
+              <div class="muted" style="font-size:13px; line-height:1.6;">
+                Une sélection des meilleures remises encore valables. Les délais peuvent varier.
+              </div>
+              <div class="miniList" id="listActive">
+                <div class="muted" style="font-size:13px;">Chargement…</div>
+              </div>
             </div>
-            <div class="price">
-              <span>${priceCurrent}</span>
-              ${priceOriginal ? `<span class="old">${priceOriginal}</span>` : ""}
+          </div>
+
+          <div  class="card">
+            <div class="pad">
+              <div class="blockTitle">
+                <strong>⚡ En stock maintenant</strong>
+                <span class="pill" style="padding:6px 10px;">Expédition rapide</span>
+              </div>
+              <div class="muted" style="font-size:13px; line-height:1.6;">
+                Les mêmes critères, mais uniquement des produits annoncés en stock (0 jour).
+              </div>
+              <div class="miniList" id="listStock">
+                <div class="muted" style="font-size:13px;">Chargement…</div>
+              </div>
             </div>
-            ${couponHTML}
-            <p>${escapeHtml(d.desc_ai || d.desc_rcz || "")}</p>
-            ${d.url ? `<a class="cta" href="${escapeAttr(d.url)}" target="_blank" rel="noopener noreferrer">Voir sur RCZ →</a>` : ""}
-          `;
-      } catch (err) {
-        document.getElementById("deal").textContent = `❌ ${err.message}`;
-      }
-    }
+          </div>
+        </div>
+        </div>
 
-    function copyCoupon() {
-      const el = document.getElementById("coupon-code");
-      if (!el) return;
-      const text = el.textContent.trim();
-      if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text);
-      } else {
-        const ta = document.createElement("textarea");
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        try { document.execCommand("copy"); alert("Code promo copié !"); } catch (e) { }
-        document.body.removeChild(ta);
-      }
-    }
+        <div id="mainGrid" class="grid">
+          <!-- LEFT: DEAL -->
+          <div class="card" id="dealBox">
+            <div class="pad" id="deal">Chargement…</div>
+          </div>
 
-    // Utilitaires d'échappement
-    function escapeHtml(s) {
-      if (s == null) return "";
-      return String(s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[m]));
-    }
-    function escapeAttr(s) {
-      return escapeHtml(s).replace(/"/g, "&quot;");
-    }
-  </script>
+          <!-- RIGHT: NO TOKEN CONTENT / TELEGRAM -->
+          <div class="card">
+            <div class="pad" id="rightPane">
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+  <div class="muted" style="font-weight:700; margin-bottom:6px; font-size:13px;">
+    Comment utiliser le code promo
+  </div>
+  <ul class="list">
+    <li>
+      <strong>Copie le code promo</strong> affiché sur cette page
+    </li>
+    <li>
+      Clique sur le <strong>lien RCZ</strong> ci-dessus ( voir l'offre) pour accéder au produit
+    </li>
+    <li>
+      Ajoute le produit à ton <strong>panier RCZ</strong>
+    </li>
+    <li>
+      Colle le <strong>code promo</strong> dans le panier avant le paiement
+    </li>
+  </ul>
+
+
+</div>
+    <div id="allDealsHeader" class="allDealsHeader">
+      <div class="muted" style="font-weight:800; font-size:13px;">Deals publics</div>
+      <div class="muted" id="allDealsCount" style="font-size:13px;">Chargement…</div>
+    </div>
+
+    <div id="allDeals" class="dealsGrid" aria-live="polite">
+      <div class="muted" style="font-size:13px;">Chargement…</div>
+    </div>
+
+        <div class="section" id="privacy">
+          <div class="pad">
+            <h2>Confidentialité & Cookies</h2>
+            <p>
+              Le site utilise des cookies essentiels. Avec ton accord, il peut aussi utiliser des cookies de mesure d’audience
+              et/ou de publicité. Tu peux accepter ou refuser les cookies non essentiels.
+            </p>
+          </div>
+        </div>
+
+        <div class="section" id="mentions">
+          <div class="pad">
+            <h2>Mentions & Contact</h2>
+            <p>
+              Éditeur : <span id="siteName2">Bike Deal Sniper</span> — Contact :
+              <a id="contactLink" href="mailto:bikedealsniper@gmail.com">bikedealsniper@gmail.com</a>
+            </p>
+          </div>
+        </div>
+
+        <div class="footer">
+          © <span id="year"></span> — Bike Deal Sniper.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cookie banner -->
+  <div class="cookie" id="cookie">
+    <div class="cookieInner">
+      <p>
+        🍪 Cookies : essentiels (toujours) + audience/pub (optionnels). Tu peux accepter ou refuser.
+        <a href="#privacy">En savoir plus</a>.
+      </p>
+      <div class="cookieActions">
+        <button class="btn ghost" onclick="rejectCookies()">Refuser</button>
+        <button class="btn" onclick="acceptCookies()">Accepter</button>
+      </div>
+    </div>
+  </div>
+
+<script src="app.js"></script>
 </body>
-
 </html>
