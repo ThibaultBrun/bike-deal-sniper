@@ -195,7 +195,7 @@ function processRczEmails() {
 
           if (i > 0) Utilities.sleep(1100); // anti-flood
           try{
-            publishDealWithImage('mtb', p);
+            TELEGRAM.publishDealWithImage('mtb', p);
           }catch(e){
             log(`   ⚠️ send TG KO (${e})`);
           }
@@ -449,18 +449,10 @@ function sanitizeDescriptionHtml_(html) {
       allowed.includes(tag.toLowerCase()) ? m : '');
   return s.replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
 }
-function escapeHtml_(s) {
-  return (s || '').toString()
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
-}
 function fmtPrice_(n) {
   if (typeof n !== 'number') return '—';
   return n.toFixed(2).replace('.', ',') + ' €';
 }
-function absoluteUrl_(base, rel) { try { return new URL(rel, base).toString(); } catch { return rel; } }
 function short_(s, n=80) { s = (s || '').toString().trim(); return s.length <= n ? s : s.slice(0, n-1) + '…'; }
 function headTail_(arr, keep) { if (arr.length <= keep) return arr; return arr.slice(arr.length - keep); }
 function log(msg) { try { Logger.log(msg); } catch(e) {} }
