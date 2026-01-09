@@ -539,3 +539,21 @@
   color:#1e3a8a;
   border-color:#bfdbfe;
 }
+.searchWrap{
+  width:100%;
+  max-width:320px;
+}
+
+.searchWrap input{
+  width:100%;
+  padding:9px 12px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  font-size:13px;
+  outline:none;
+}
+
+.searchWrap input:focus{
+  border-color:#2563eb;
+}
+

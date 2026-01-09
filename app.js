@@ -20,6 +20,11 @@ document.getElementById("contactLink").textContent = CONTACT_EMAIL;
 document.getElementById("contactLink").href = `mailto:${CONTACT_EMAIL}`;
 document.getElementById("year").textContent = new Date().getFullYear();
 
+
+let searchQuery_ = "";
+
+
+
 function getTokenFromUrl() {
   const qs = new URLSearchParams(window.location.search);
   let t = qs.get("token");
@@ -350,6 +355,14 @@ async function fetchRpc_(fnName) {
 let allDealsPublicCache_ = [];
 let selectedItemTypes_ = new Set(); // vide => affiche tout
 
+function normText_(v) {
+  return (v || "")
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 function normItemType_(v) {
   return (v == null)
     ? "autre"
@@ -434,6 +447,41 @@ function renderTypeFilters_(arr) {
   }
 }
 
+function filterDeals_(arr) {
+  let out = arr;
+
+  // 1) filtre type
+  if (selectedItemTypes_ && selectedItemTypes_.size > 0) {
+    out = out.filter(d => selectedItemTypes_.has(normItemType_(d.item_type) || "autre"));
+  }
+
+  // 2) filtre recherche sur title
+  const q = normText_(searchQuery_);
+  if (q) {
+    const tokens = q.split(/\s+/).filter(Boolean); // ["fox","performance","36"]
+    out = out.filter(d => {
+      const title = normText_(d.title);
+      // Tous les mots doivent être présents
+      return tokens.every(t => title.includes(t));
+    });
+  }
+
+  return out;
+
+}
+
+function bindSearchInput_() {
+  const input = document.getElementById("searchInput");
+  if (!input || input.__bound) return;
+
+  input.addEventListener("input", (e) => {
+    searchQuery_ = e.target.value.trim();
+    renderAllDealsPublicGrid_();
+  });
+
+  input.__bound = true;
+}
+
 function filterDealsBySelectedTypes_(arr) {
   // rien coché => tout afficher
   if (!selectedItemTypes_ || selectedItemTypes_.size === 0) return arr;
@@ -450,7 +498,7 @@ function renderAllDealsPublicGrid_() {
   if (!grid) return;
 
   const total = allDealsPublicCache_.length;
-  const filtered = filterDealsBySelectedTypes_(allDealsPublicCache_);
+  const filtered = filterDeals_(allDealsPublicCache_);
 
   if (count) {
     if (total === 0) {
@@ -577,6 +625,9 @@ async function loadAllDealsPublic_() {
     allDealsPublicCache_ = Array.isArray(all) ? all : [];
 
     renderTypeFilters_(allDealsPublicCache_);
+    renderAllDealsPublicGrid_();
+    renderTypeFilters_(allDealsPublicCache_);
+    bindSearchInput_();
     renderAllDealsPublicGrid_();
 
   } catch (e) {
