@@ -498,3 +498,44 @@
   text-decoration: none;
   color: inherit;
 }
+.typeFilters{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin: 10px 0 12px;
+}
+
+.typeFilters.hidden{ display:none; }
+
+.filterBtn{
+  appearance:none;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  color:#111827;
+  border-radius:999px;
+  padding:8px 10px;
+  font-size:12px;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  user-select:none;
+}
+
+.filterBtn .count{
+  font-size:11px;
+  color:#6b7280;
+  border:1px solid #e5e7eb;
+  border-radius:999px;
+  padding:2px 7px;
+}
+
+.filterBtn.isActive{
+  border-color:#2563eb;        /* bleu sobre */
+  background:#eff6ff;          /* bleu très clair */
+  color:#1e3a8a;
+}
+.filterBtn.isActive .count{
+  color:#1e3a8a;
+  border-color:#bfdbfe;
+}
