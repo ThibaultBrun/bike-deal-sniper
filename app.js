@@ -1,6 +1,3 @@
-// =========================
-//  CONFIG À PERSONNALISER
-// =========================
 const SITE_NAME = "bike Deal Sniper";
 const CONTACT_EMAIL = "bikedealsniper@gmail.com";
 
@@ -10,7 +7,6 @@ const TELEGRAM_CHANNEL_URL = "https://t.me/RCZ_watcher_mtb_fr";
 const SUPABASE_URL = "https://fgwytagsmcjzrbjhcude.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_Qo1qCBUJpKpF5nzOCKFmqw_TrfzU0Hp";
 const TABLE_NAME = "deals";
-
 const TOKEN_FIELD = "token";
 
 const TOKEN_HEADER_NAME = "x-deal-token";
@@ -24,9 +20,6 @@ document.getElementById("contactLink").textContent = CONTACT_EMAIL;
 document.getElementById("contactLink").href = `mailto:${CONTACT_EMAIL}`;
 document.getElementById("year").textContent = new Date().getFullYear();
 
-// =========================
-//  TOKEN
-// =========================
 function getTokenFromUrl() {
   const qs = new URLSearchParams(window.location.search);
   let t = qs.get("token");
@@ -273,6 +266,13 @@ function rejectCookies() {
   cookieEl.style.display = "none";
 }
 
+// =========================
+//  COPIE
+// =========================
+function exampleUrl() {
+  return `?token=COLLE_TON_TOKEN`;
+}
+function copyExample() { copyText(exampleUrl(), "Exemple copié"); }
 function copyCoupon() {
   const el = document.getElementById("coupon-code");
   if (!el) return;
@@ -306,7 +306,7 @@ function escapeAttr(s) {
 
 
 // =========================
-//  RPC supabase
+//  TOP LISTS (RPC)
 // =========================
 const RPC_ACTIVE = "get_top3_deals_public";
 const RPC_STOCK = "get_top3_deals_public_stock";
@@ -330,6 +330,7 @@ async function fetchRpc_(fnName) {
     Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
     "Content-Type": "application/json",
   };
+  // RPC SQL sans paramètres => POST body {}
   const res = await fetch(url, { method: "POST", headers, body: "{}" });
   const txt = await res.text();
   let json = null;
@@ -338,6 +339,138 @@ async function fetchRpc_(fnName) {
     throw new Error(`RPC ${fnName} failed (${res.status}): ${txt.slice(0, 200)}`);
   }
   return Array.isArray(json) ? json : [];
+}
+// =========================
+//  PUBLIC DEALS FILTER (item_type)
+// =========================
+// =========================
+//  PUBLIC DEALS FILTER (item_type)
+//  Mode: inclusion si au moins 1 coché, sinon tout afficher
+// =========================
+let allDealsPublicCache_ = [];
+let selectedItemTypes_ = new Set(); // vide => affiche tout
+
+function normItemType_(v) {
+  return (v == null)
+    ? "autre"
+    : String(v).trim().toLowerCase();
+}
+function prettyItemType_(type) {
+  if (!type) return "Autre";
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function itemTypeLabel_(type) {
+  const t = normItemType_(type);
+  return t || "Autre";
+}
+
+function computeItemTypeStats_(arr) {
+  const counts = new Map();     // key: normalized
+  const labels = new Map();     // key: normalized → label affiché
+
+  for (const d of arr) {
+    const raw = d.item_type;
+    const key = normItemType_(raw);
+
+    if (!counts.has(key)) {
+      counts.set(key, 0);
+      // on garde le premier label rencontré
+      labels.set(
+        key,
+        raw ? prettyItemType_(String(raw).trim().toLowerCase()) : "Autre"
+      );
+    }
+    counts.set(key, counts.get(key) + 1);
+  }
+
+  const types = Array.from(counts.keys())
+    .sort((a, b) => labels.get(a).localeCompare(labels.get(b), "fr", { sensitivity: "base" }));
+
+  return { types, counts, labels };
+}
+
+function renderTypeFilters_(arr) {
+  const el = document.getElementById("typeFilters");
+  if (!el) return;
+
+  const { types, counts, labels } = computeItemTypeStats_(arr);
+
+  // pas de diversité => pas de barre
+  if (types.length <= 1) {
+    el.innerHTML = "";
+    el.classList.add("hidden");
+    return;
+  }
+  el.classList.remove("hidden");
+
+  el.innerHTML = types.map(t => {
+    const isActive = selectedItemTypes_.has(t);
+    const n = counts.get(t) || 0;
+    const label = labels.get(t) || "Autre";
+
+    return `
+    <button type="button"
+      class="filterBtn ${isActive ? "isActive" : ""}"
+      data-type="${escapeAttr(t)}">
+      ${escapeHtml(label)}
+      <span class="count">${escapeHtml(String(n))}</span>
+    </button>
+  `;
+  }).join("");
+  if (!el.__bound) {
+    el.addEventListener("click", (evt) => {
+      const btn = evt.target?.closest?.("button[data-type]");
+      if (!btn) return;
+      const t = normItemType_(btn.getAttribute("data-type")) || "Autre";
+
+      if (selectedItemTypes_.has(t)) selectedItemTypes_.delete(t);
+      else selectedItemTypes_.add(t);
+
+      renderTypeFilters_(allDealsPublicCache_);
+      renderAllDealsPublicGrid_();
+    });
+    el.__bound = true;
+  }
+}
+
+function filterDealsBySelectedTypes_(arr) {
+  // rien coché => tout afficher
+  if (!selectedItemTypes_ || selectedItemTypes_.size === 0) return arr;
+
+  return arr.filter(d => {
+    const t = normItemType_(d.item_type) || "Autre";
+    return selectedItemTypes_.has(t);
+  });
+}
+
+function renderAllDealsPublicGrid_() {
+  const grid = document.getElementById("allDeals");
+  const count = document.getElementById("allDealsCount");
+  if (!grid) return;
+
+  const total = allDealsPublicCache_.length;
+  const filtered = filterDealsBySelectedTypes_(allDealsPublicCache_);
+
+  if (count) {
+    if (total === 0) {
+      count.textContent = "0 deal";
+    } else if (!selectedItemTypes_ || selectedItemTypes_.size === 0) {
+      // rien coché => tout affiché
+      count.textContent = `${total} deals`;
+    } else {
+      count.textContent = `${filtered.length} / ${total} deals`;
+    }
+  }
+
+  if (total === 0) {
+    grid.innerHTML = `<div class="muted" style="font-size:13px;">Aucun deal.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.length
+    ? filtered.map(d => renderGridDeal_(d)).join("")
+    : `<div class="muted" style="font-size:13px;">Aucun deal pour les catégories sélectionnées.</div>`;
 }
 
 function renderMiniDeal_(d, { showDelay } = { showDelay: false }) {
@@ -441,16 +574,15 @@ async function loadAllDealsPublic_() {
 
   try {
     const all = await fetchRpc_(RPC_ALL_PUBLIC);
+    allDealsPublicCache_ = Array.isArray(all) ? all : [];
 
-    if (count) count.textContent = `${all.length} deal${all.length > 1 ? "s" : ""}`;
+    renderTypeFilters_(allDealsPublicCache_);
+    renderAllDealsPublicGrid_();
 
-    grid.innerHTML = all.length
-      ? all.map(d => renderGridDeal_(d)).join("")
-      : `<div class="muted" style="font-size:13px;">Aucun deal public pour le moment.</div>`;
   } catch (e) {
     console.log("All deals error:", e);
     if (count) count.textContent = "Erreur de chargement";
-    grid.innerHTML = `<div class="muted" style="font-size:13px;">Impossible de charger les deals publics.</div>`;
+    grid.innerHTML = `<div class="muted" style="font-size:13px;">Impossible de charger les deals.</div>`;
   }
 }
 async function loadTopBlocks_() {
@@ -464,7 +596,7 @@ async function loadTopBlocks_() {
       fetchRpc_(RPC_STOCK),
     ]);
 
-    // Actifs : afficher délai si présent
+    // Actifs : afficher délai si présent (ex: 20 jours)
     elA.innerHTML = active.length
       ? active.slice(0, 3).map(d => renderMiniDeal_(d, { showDelay: true })).join("")
       : `<div class="muted" style="font-size:13px;">Aucun deal actif.</div>`;
@@ -506,6 +638,21 @@ function computeEstimatedDelivery(stockDelayDays) {
     label
   };
 }
+function moveTopBlocksForToken_(hasToken) {
+  const wrap = document.getElementById("topBlocksWrap");
+  const anchor = document.getElementById("topBlocksAnchor");
+  const grid = document.getElementById("mainGrid"); // ta grille 2 colonnes
+
+  if (!wrap || !anchor || !grid) return;
+
+  if (hasToken) {
+    // sous les deux panneaux (deal + colonne droite)
+    grid.insertAdjacentElement("afterend", wrap);
+  } else {
+    // retour à la position d'origine
+    anchor.insertAdjacentElement("afterend", wrap);
+  }
+}
 
 function toggleTopBlocks_(hasToken) {
   const el = document.getElementById('topBlocks');
@@ -520,12 +667,16 @@ function toggleAllDeals_(hasToken) {
 
   if (header) header.classList.toggle("hidden", hasToken);
   if (grid) grid.classList.toggle("hidden", hasToken);
+  const filters = document.getElementById("typeFilters");
+  if (filters) filters.classList.toggle("hidden", hasToken);
+
 }
 
 
 
+
 // =========================
-//  INIT
+//  START
 // =========================
 (function init() {
   const token = getTokenFromUrl();
