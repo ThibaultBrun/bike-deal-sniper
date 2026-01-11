@@ -104,11 +104,19 @@
 
       </div>
       <div id="allDealsHeader" class="allDealsHeader">
-        <div class="muted" style="font-weight:800; font-size:13px;">Ventes privées</div>
-        <div class="searchWrap">
+          <div class="muted" style="font-weight:800; font-size:13px;">Ventes privées</div>
+
+        <div>         <select id="sortSelect" class="sortSelect">
+  <option value="price_asc">Prix ↑</option>
+  <option value="price_desc">Prix ↓</option>
+  <option value="discount_asc">Remise ↑</option>
+  <option value="discount_desc">Remise ↓</option>
+</select>
           <input id="searchInput" type="search" placeholder="Rechercher un produit (nom)…"
             aria-label="Recherche par nom de produit" />
         </div>
+
+</div>
 
         <div id="typeFilters" class="typeFilters" aria-label="Filtres par type"></div>
 

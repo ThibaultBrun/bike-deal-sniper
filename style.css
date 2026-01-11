@@ -557,3 +557,14 @@
   border-color:#2563eb;
 }
 
+.sortSelect{
+  padding:8px 12px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  font-size:12px;
+  background:#fff;
+  cursor:pointer;
+}
+.sortSelect:focus{
+  border-color:#2563eb;
+}
