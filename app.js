@@ -22,7 +22,8 @@ document.getElementById("year").textContent = new Date().getFullYear();
 
 
 let searchQuery_ = "";
-let sortMode_ = "discount_desc"; 
+let sortMode_ = "discount_desc";
+let hideSold_ = false;
 
 
 
@@ -376,22 +377,22 @@ function itemTypeLabel_(type) {
 function sortDeals_(arr) {
   const out = [...arr];
 
-  switch(sortMode_) {
+  switch (sortMode_) {
 
     case "price_asc":
-      out.sort((a,b)=> (a.price_current||0) - (b.price_current||0));
+      out.sort((a, b) => (a.price_current || 0) - (b.price_current || 0));
       break;
 
     case "price_desc":
-      out.sort((a,b)=> (b.price_current||0) - (a.price_current||0));
+      out.sort((a, b) => (b.price_current || 0) - (a.price_current || 0));
       break;
 
     case "discount_asc":
-      out.sort((a,b)=> (a.prct_discount||0) - (b.prct_discount||0));
+      out.sort((a, b) => (a.prct_discount || 0) - (b.prct_discount || 0));
       break;
 
     case "discount_desc":
-      out.sort((a,b)=> (b.prct_discount||0) - (a.prct_discount||0));
+      out.sort((a, b) => (b.prct_discount || 0) - (a.prct_discount || 0));
       break;
   }
 
@@ -485,6 +486,9 @@ function filterDeals_(arr) {
       return tokens.every(t => title.includes(t));
     });
   }
+  if (hideSold_) {
+    out = out.filter(d => d.available !== false);
+  }
 
   return out;
 
@@ -501,16 +505,28 @@ function bindSearchInput_() {
 
   input.__bound = true;
 }
-function bindSortSelect_(){
+function bindSortSelect_() {
   const sel = document.getElementById("sortSelect");
-  if(!sel || sel.__bound) return;
+  if (!sel || sel.__bound) return;
 
-  sel.addEventListener("change",(e)=>{
+  sel.addEventListener("change", (e) => {
     sortMode_ = e.target.value;
     renderAllDealsPublicGrid_();
   });
 
   sel.__bound = true;
+}
+function bindSoldFilterBtn_() {
+  const btn = document.getElementById("soldFilterBtn");
+  if (!btn || btn.__bound) return;
+
+  btn.addEventListener("click", () => {
+    hideSold_ = !hideSold_;
+    btn.classList.toggle("isActive", hideSold_);
+    renderAllDealsPublicGrid_();
+  });
+
+  btn.__bound = true;
 }
 
 function filterDealsBySelectedTypes_(arr) {
@@ -529,17 +545,21 @@ function renderAllDealsPublicGrid_() {
   if (!grid) return;
 
   const total = allDealsPublicCache_.length;
-const filtered = filterDeals_(allDealsPublicCache_);
-const sorted = sortDeals_(filtered);
+  const filtered = filterDeals_(allDealsPublicCache_);
+  const sorted = sortDeals_(filtered);
 
   if (count) {
+    const hasTypeFilter = selectedItemTypes_ && selectedItemTypes_.size > 0;
+    const hasSearch = !!normText_(searchQuery_);
+    const hasSoldFilter = !!hideSold_;
+
+    const hasAnyFilter = hasTypeFilter || hasSearch || hasSoldFilter;
+
     if (total === 0) {
       count.textContent = "0 deal";
-    } else if (!selectedItemTypes_ || selectedItemTypes_.size === 0) {
-      // rien coché => tout affiché
-      count.textContent = `${total} deals`;
-    } else {
-      count.textContent = `${filtered.length} / ${total} deals`;
+    } else{
+      // au moins un filtre => on affiche filtré / total
+      count.textContent = `${filtered.length} deals`;
     }
   }
 
@@ -548,9 +568,9 @@ const sorted = sortDeals_(filtered);
     return;
   }
 
-grid.innerHTML = sorted.length
-  ? sorted.map(d => renderGridDeal_(d)).join("")
-  : `<div class="muted" style="font-size:13px;">Aucun deal.</div>`;
+  grid.innerHTML = sorted.length
+    ? sorted.map(d => renderGridDeal_(d)).join("")
+    : `<div class="muted" style="font-size:13px;">Aucun deal.</div>`;
 }
 
 function renderMiniDeal_(d, { showDelay } = { showDelay: false }) {
@@ -661,8 +681,15 @@ async function loadAllDealsPublic_() {
     renderTypeFilters_(allDealsPublicCache_);
     bindSearchInput_();
     bindSortSelect_();
+    bindSoldFilterBtn_()
 
     renderAllDealsPublicGrid_();
+    const soldBtn = document.getElementById("soldFilterBtn");
+    if (soldBtn) {
+      const soldCount = allDealsPublicCache_.filter(d => d.available === false).length;
+      soldBtn.innerHTML = `Masquer vendus <span class="count">${soldCount}</span>`;
+    }
+
 
   } catch (e) {
     console.log("All deals error:", e);
