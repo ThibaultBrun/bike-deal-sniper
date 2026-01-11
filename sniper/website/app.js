@@ -22,6 +22,7 @@ document.getElementById("year").textContent = new Date().getFullYear();
 
 
 let searchQuery_ = "";
+let sortMode_ = "discount_desc"; 
 
 
 
@@ -345,15 +346,9 @@ async function fetchRpc_(fnName) {
   }
   return Array.isArray(json) ? json : [];
 }
-// =========================
-//  PUBLIC DEALS FILTER (item_type)
-// =========================
-// =========================
-//  PUBLIC DEALS FILTER (item_type)
-//  Mode: inclusion si au moins 1 coché, sinon tout afficher
-// =========================
+
 let allDealsPublicCache_ = [];
-let selectedItemTypes_ = new Set(); // vide => affiche tout
+let selectedItemTypes_ = new Set();
 
 function normText_(v) {
   return (v || "")
@@ -376,6 +371,31 @@ function prettyItemType_(type) {
 function itemTypeLabel_(type) {
   const t = normItemType_(type);
   return t || "Autre";
+}
+
+function sortDeals_(arr) {
+  const out = [...arr];
+
+  switch(sortMode_) {
+
+    case "price_asc":
+      out.sort((a,b)=> (a.price_current||0) - (b.price_current||0));
+      break;
+
+    case "price_desc":
+      out.sort((a,b)=> (b.price_current||0) - (a.price_current||0));
+      break;
+
+    case "discount_asc":
+      out.sort((a,b)=> (a.prct_discount||0) - (b.prct_discount||0));
+      break;
+
+    case "discount_desc":
+      out.sort((a,b)=> (b.prct_discount||0) - (a.prct_discount||0));
+      break;
+  }
+
+  return out;
 }
 
 function computeItemTypeStats_(arr) {
@@ -481,6 +501,17 @@ function bindSearchInput_() {
 
   input.__bound = true;
 }
+function bindSortSelect_(){
+  const sel = document.getElementById("sortSelect");
+  if(!sel || sel.__bound) return;
+
+  sel.addEventListener("change",(e)=>{
+    sortMode_ = e.target.value;
+    renderAllDealsPublicGrid_();
+  });
+
+  sel.__bound = true;
+}
 
 function filterDealsBySelectedTypes_(arr) {
   // rien coché => tout afficher
@@ -498,7 +529,8 @@ function renderAllDealsPublicGrid_() {
   if (!grid) return;
 
   const total = allDealsPublicCache_.length;
-  const filtered = filterDeals_(allDealsPublicCache_);
+const filtered = filterDeals_(allDealsPublicCache_);
+const sorted = sortDeals_(filtered);
 
   if (count) {
     if (total === 0) {
@@ -516,9 +548,9 @@ function renderAllDealsPublicGrid_() {
     return;
   }
 
-  grid.innerHTML = filtered.length
-    ? filtered.map(d => renderGridDeal_(d)).join("")
-    : `<div class="muted" style="font-size:13px;">Aucun deal pour les catégories sélectionnées.</div>`;
+grid.innerHTML = sorted.length
+  ? sorted.map(d => renderGridDeal_(d)).join("")
+  : `<div class="muted" style="font-size:13px;">Aucun deal.</div>`;
 }
 
 function renderMiniDeal_(d, { showDelay } = { showDelay: false }) {
@@ -628,6 +660,8 @@ async function loadAllDealsPublic_() {
     renderAllDealsPublicGrid_();
     renderTypeFilters_(allDealsPublicCache_);
     bindSearchInput_();
+    bindSortSelect_();
+
     renderAllDealsPublicGrid_();
 
   } catch (e) {
