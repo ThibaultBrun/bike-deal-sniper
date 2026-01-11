@@ -15,9 +15,6 @@ const TOKEN_HEADER_NAME = "x-deal-token";
 //  INIT UI
 // =========================
 document.getElementById("siteName").textContent = SITE_NAME;
-document.getElementById("siteName2").textContent = SITE_NAME;
-document.getElementById("contactLink").textContent = CONTACT_EMAIL;
-document.getElementById("contactLink").href = `mailto:${CONTACT_EMAIL}`;
 document.getElementById("year").textContent = new Date().getFullYear();
 
 
