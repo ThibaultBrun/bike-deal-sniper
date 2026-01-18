@@ -147,14 +147,12 @@
     }
 
     /* Deal */
-    #dealBox img {
-      width: 100%;
-      max-height: 320px;
-      object-fit: cover;
-      display: block;
-      border-bottom: 1px solid var(--line);
-      background: #f9fafb;
-    }
+#dealBox img {
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;     /* 👈 plus de zoom */
+  background: #f9fafb;     /* fond propre si bandes */
+}
 
     .row {
       display: flex;
@@ -381,56 +379,10 @@
       line-height: 1.6;
     }
 
-    /* Top blocks */
-    .blocks {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-top: 14px;
-    }
-
     @media(max-width: 920px) {
       .blocks {
         grid-template-columns: 1fr
       }
-    }
-
-    .blockTitle {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin: 0 0 8px;
-      font-size: 14px;
-      letter-spacing: -.1px;
-    }
-
-    .miniList {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    .miniDeal {
-      display: flex;
-      gap: 10px;
-      align-items: flex-start;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      background: #f9fafb;
-    }
-
-    .miniDeal img {
-      width: 72px;
-      height: 72px;
-      border-radius: 12px;
-      object-fit: cover;
-      background: #fff;
-      border: 1px solid var(--line);
-      flex: 0 0 auto;
     }
 
     .miniMain {
@@ -514,22 +466,38 @@
       display: block;
     }
 
-    /* Variante mini (72x72) */
-    .imgWrap.mini {
-      width: 72px;
-      height: 72px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: #fff;
-      flex: 0 0 auto;
-    }
+.imgWrap.mini {
+  width: 64px;
+  height: 64px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  flex: 0 0 64px;
+}
 
-    .imgWrap.mini img {
-      width: 72px;
-      height: 72px;
-      object-fit: cover;
-      display: block;
-    }
+.miniDeal {
+  align-items: center;  /* centre verticalement */
+}
+
+.imgWrap.mini img {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  background: #fff;
+}
+.miniT {
+  font-size: 12px;
+  line-height: 1.25;
+}
+.miniMeta {
+  margin-top: 2px;
+  gap: 6px;
+  font-size: 11px;
+}
+.miniMain {
+  flex: 1;
+  min-width: 0;
+}
 
     /* Ruban diagonal */
     /* ====== VENDU ribbon — mini / cards ====== */
@@ -591,20 +559,6 @@
       color: var(--muted);
       margin-top: 6px;
       line-height: 1.5;
-    }
-
-    /* Wrapper stable pour Hot Deals */
-    #topBlocksWrap {
-      display: flex;
-      justify-content: center;
-      align-items: stretch;
-      width: 100%;
-      margin-top: 16px;
-    }
-
-    /* Sécurité : le bloc interne garde son comportement */
-    #topBlocks {
-      width: 100%;
     }
 
     .brand {
@@ -1124,4 +1078,80 @@
 .navDrop:hover .navMenu,
 .navDrop:focus-within .navMenu{
   display:block;
+}
+
+.miniDealLink{
+  display:block;
+  text-decoration:none;
+  color:inherit;
+}
+
+.miniDealLink:hover .miniDeal{
+  filter: brightness(0.99);
+}
+.miniDealLink:focus-visible{
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+  border-radius: 18px;
+}
+
+.dealLink,
+.dealTitleLink{
+  display:block;
+  text-decoration:none;
+  color:inherit;
+}
+
+.dealLink img{
+  cursor:pointer;
+}
+
+.dealTitleLink .dealTitle{
+  cursor:pointer;
+}
+
+.dealLink:hover img{
+  filter: brightness(0.98);
+}
+/* ===== FIX mini deals : image gauche / texte droite (force) ===== */
+
+/* Le conteneur mini doit être une rangée */
+.miniDeal{
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+/* On annule le style générique de .imgWrap (qui était prévu pour le deal principal) */
+.miniDeal .imgWrap{
+  border-bottom: 0 !important;     /* <-- c’est ça qui donne l’effet "header" */
+  background: transparent !important;
+}
+
+/* Colonne image fixe */
+.miniDeal .imgWrap.mini{
+  width: 64px !important;
+  height: 64px !important;
+  flex: 0 0 64px !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--line) !important;
+  background: #fff !important;
+  overflow: hidden !important;
+}
+
+/* IMPORTANT : on neutralise .imgWrap img { width:100%; max-height:320px; ... } */
+.miniDeal .imgWrap.mini img{
+  width: 64px !important;
+  height: 64px !important;
+  max-height: none !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+/* Texte à droite */
+.miniDeal .miniMain{
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
 }

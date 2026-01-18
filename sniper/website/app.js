@@ -21,6 +21,7 @@ document.getElementById("year").textContent = new Date().getFullYear();
 let searchQuery_ = "";
 let sortMode_ = "discount_desc";
 let hideSold_ = false;
+let onlyStock0_ = false;
 
 
 
@@ -54,58 +55,6 @@ function renderRightNoToken() {
           </ul>
         </div>
 
-      `;
-}
-
-function renderRightWithToken() {
-  const el = document.getElementById("rightPane");
-  el.innerHTML = `
-
-      <div style="margin-top:12px;">
-  <div class="muted" style="font-weight:700; margin-bottom:6px; font-size:13px;">
-    Les prochains deals VTT :
-  </div>
-  <ul class="list">
-    <li>
-      <strong>Environ 20 produits VTT</strong> sélectionnés chaque jour
-    </li>
-    <li>
-      Publications <strong>deux fois par jour</strong> : matin et après-midi
-    </li>
-    <li>
-      Rythme similaire à <strong>ton site de bons plans favori</strong>
-    </li>
-    <li>
-      Pièces <strong>neuves, OEM et fins de stock</strong> à prix cassés
-    </li>
-    <li>
-      Fiches claires : <strong>prix, remise, code promo, lien direct</strong>
-    </li>
-  </ul>
-</div>
-
-
-        <h3 class="subttl">À propos de ce deal</h3>
-        <p class="muted" style="margin:0; line-height:1.75; font-size:14px;">
-          Tu visualises une fiche produit en temps réel. Si un code promo est disponible, il apparaît dans la fiche.
-          Les stocks peuvent évoluer rapidement.
-        </p>
-
-        <div style="margin-top:12px;">
-          <div class="muted" style="font-weight:700; margin-bottom:6px; font-size:13px;">Recevoir les prochains deals :</div>
-          <a class="btn" style="width:100%;" href="${escapeAttr(TELEGRAM_CHANNEL_URL)}" target="_blank" rel="noopener">
-            S’abonner sur Telegram →
-          </a>
-        </div>
-
-        <div style="margin-top:12px;">
-          <div class="muted" style="font-weight:700; margin-bottom:6px; font-size:13px;">RCZ en bref :</div>
-          <ul class="list">
-            <li>Neuf / OEM / fin de stock</li>
-            <li>Deals qui partent vite</li>
-            <li>Fiche claire (prix, remise, code promo, lien)</li>
-          </ul>
-        </div>
       `;
 }
 
@@ -174,13 +123,23 @@ function renderDeal(d) {
   deal.innerHTML = `
     ${d.image ? `
       <div class="imgWrap deal ${d.available === false ? "isSold" : ""}">
-        <img src="${escapeAttr(d.image)}" alt="${escapeAttr(d.title || 'Image produit')}">
-        ${d.available === false ? `<div class="ribbonSold">VENDU</div>` : ""}
+        ${d.url
+          ? `<a class="dealLink" href="${escapeAttr(d.url)}" target="_blank" rel="noopener noreferrer">`
+          : ""
+        }
+          <img src="${escapeAttr(d.image)}" alt="${escapeAttr(d.title || 'Image produit')}">
+          ${d.available === false ? `<div class="ribbonSold">VENDU</div>` : ""}
+        ${d.url ? `</a>` : ""}
       </div>
     ` : ""}
     <div class="pad">
       <div class="row">
-        <h3 class="dealTitle">${escapeHtml(d.title || "Deal")}</h3>
+      ${d.url
+        ? `<a class="dealTitleLink" href="${escapeAttr(d.url)}" target="_blank" rel="noopener noreferrer">
+            <h3 class="dealTitle">${escapeHtml(d.title || "Deal")}</h3>
+          </a>`
+        : `<h3 class="dealTitle">${escapeHtml(d.title || "Deal")}</h3>`
+      }
         ${discount ? `<span class="badge">${escapeHtml(discount)}</span>` : ""}
       </div>
 
@@ -219,13 +178,28 @@ async function loadDeal(token) {
     Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
   };
 
+  const right = document.getElementById("rightPane");
+  if (right) right.innerHTML = `<div class="muted" style="font-size:13px;">Chargement des produits liés…</div>`;
+
   const urlA = `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*`;
   const rA = await fetchJson(urlA, { ...baseHeaders, [TOKEN_HEADER_NAME]: token });
 
   if (rA.res.ok && Array.isArray(rA.json) && rA.json.length >= 1) {
-    renderDeal(rA.json[0]);
+    const deal = rA.json[0];
+    renderDeal(deal);
+
+    try {
+      const siblings = await fetchRpcParams_(RPC_SAME_COUPON, { p_token: token });
+      renderRightSameCoupon_(deal, siblings);
+    } catch (e) {
+      console.log("same coupon RPC error:", e);
+      renderRightSameCoupon_(deal, []);
+    }
     return;
+
   }
+
+
 
   if (TOKEN_FIELD) {
     const urlB = `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*&${encodeURIComponent(TOKEN_FIELD)}=eq.${encodeURIComponent(token)}`;
@@ -309,16 +283,14 @@ function escapeAttr(s) {
 }
 
 
-// =========================
-//  TOP LISTS (RPC)
-// =========================
-const RPC_ACTIVE = "get_top3_deals_public";
-const RPC_STOCK = "get_top3_deals_public_stock";
 const RPC_ALL_PUBLIC = "get_all_deals_public";
 function siteDealUrl_(token) {
   const base = `${window.location.origin}${window.location.pathname}`;
   return `${base}?token=${encodeURIComponent(token)}`;
 }
+
+const RPC_SAME_COUPON = "get_deals_public_same_coupon";
+
 
 function fmtEur_(v) {
   if (v == null || v === "") return "—";
@@ -344,6 +316,27 @@ async function fetchRpc_(fnName) {
   }
   return Array.isArray(json) ? json : [];
 }
+
+async function fetchRpcParams_(fnName, params) {
+  const url = `${SUPABASE_URL}/rest/v1/rpc/${fnName}`;
+  const headers = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    "Content-Type": "application/json",
+  };
+
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(params || {}) });
+  const txt = await res.text();
+
+  let json = null;
+  try { json = txt ? JSON.parse(txt) : null; } catch (e) {}
+
+  if (!res.ok) {
+    throw new Error(`RPC ${fnName} failed (${res.status}): ${txt.slice(0, 200)}`);
+  }
+  return Array.isArray(json) ? json : [];
+}
+
 
 let allDealsPublicCache_ = [];
 let selectedItemTypes_ = new Set();
@@ -486,6 +479,10 @@ function filterDeals_(arr) {
   if (hideSold_) {
     out = out.filter(d => d.available !== false);
   }
+  if (onlyStock0_) {
+    out = out.filter(d => Number(d.stock_delay) === 0);
+  }
+
 
   return out;
 
@@ -520,6 +517,19 @@ function bindSoldFilterBtn_() {
   btn.addEventListener("click", () => {
     hideSold_ = !hideSold_;
     btn.classList.toggle("isActive", hideSold_);
+    renderAllDealsPublicGrid_();
+  });
+
+  btn.__bound = true;
+}
+
+function bindStockFilterBtn_() {
+  const btn = document.getElementById("stockFilterBtn");
+  if (!btn || btn.__bound) return;
+
+  btn.addEventListener("click", () => {
+    onlyStock0_ = !onlyStock0_;
+    btn.classList.toggle("isActive", onlyStock0_);
     renderAllDealsPublicGrid_();
   });
 
@@ -588,28 +598,27 @@ function renderMiniDeal_(d, { showDelay } = { showDelay: false }) {
   const sold = (d.available === false);
 
   return `
-  <div class="miniDeal ${sold ? "isSold" : ""}">
-    <div class="imgWrap mini">
-      ${d.image
-      ? `<img src="${escapeAttr(d.image)}" alt="${escapeAttr(d.title || "Produit")}">`
-      : `<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="">`
-    }
-      ${sold ? `<div class="ribbonSold" style="top:8px; right:-52px; width:170px;">VENDU</div>` : ""}
-    </div>
-
-    <div class="miniMain">
-            <a href="${escapeAttr(dealUrl)}" title="Ouvrir le deal">
-              <p class="miniT">${escapeHtml(d.title || "Deal")}</p>
-            </a>
-            <div class="miniMeta">
-              ${tags.join("")}
-              <span class="k">${escapeHtml(fmtEur_(d.price_current))}</span>
-              ${d.price_original ? `<span style="text-decoration:line-through; color:#9ca3af;">${escapeHtml(fmtEur_(d.price_original))}</span>` : ""}
-            </div>
-          </div>
-          <a class="btn ghost" style="padding:8px 10px; border-radius:12px; font-size:12px;" href="${escapeAttr(dealUrl)}">Voir</a>
+    <a class="miniDealLink" href="${escapeAttr(dealUrl)}" title="Ouvrir le deal">
+      <div class="miniDeal ${sold ? "isSold" : ""}">
+        <div class="imgWrap mini">
+          ${d.image
+            ? `<img src="${escapeAttr(d.image)}" alt="${escapeAttr(d.title || "Produit")}">`
+            : `<img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="">`
+          }
+          ${sold ? `<div class="ribbonSold" style="top:8px; right:-52px; width:170px;">VENDU</div>` : ""}
         </div>
-      `;
+
+        <div class="miniMain">
+          <p class="miniT">${escapeHtml(d.title || "Deal")}</p>
+          <div class="miniMeta">
+            ${tags.join("")}
+            <span class="k">${escapeHtml(fmtEur_(d.price_current))}</span>
+            ${d.price_original ? `<span style="text-decoration:line-through; color:#9ca3af;">${escapeHtml(fmtEur_(d.price_original))}</span>` : ""}
+          </div>
+        </div>
+      </div>
+    </a>
+  `;
 }
 
 
@@ -679,6 +688,7 @@ async function loadAllDealsPublic_() {
     bindSearchInput_();
     bindSortSelect_();
     bindSoldFilterBtn_()
+    bindStockFilterBtn_();
 
     renderAllDealsPublicGrid_();
     const soldBtn = document.getElementById("soldFilterBtn");
@@ -686,39 +696,17 @@ async function loadAllDealsPublic_() {
       const soldCount = allDealsPublicCache_.filter(d => d.available === false).length;
       soldBtn.innerHTML = `Masquer vendus <span class="count">${soldCount}</span>`;
     }
+    const stockBtn = document.getElementById("stockFilterBtn");
+    if (stockBtn) {
+      const stock0Count = allDealsPublicCache_.filter(d => Number(d.stock_delay) === 0).length;
+      stockBtn.innerHTML = `Prêt à éxpedier <span class="count">${stock0Count}</span>`;
+    }
 
 
   } catch (e) {
     console.log("All deals error:", e);
     if (count) count.textContent = "Erreur de chargement";
     grid.innerHTML = `<div class="muted" style="font-size:13px;">Impossible de charger les deals.</div>`;
-  }
-}
-async function loadTopBlocks_() {
-  const elA = document.getElementById("listActive");
-  const elS = document.getElementById("listStock");
-  if (!elA || !elS) return;
-
-  try {
-    const [active, stock] = await Promise.all([
-      fetchRpc_(RPC_ACTIVE),
-      fetchRpc_(RPC_STOCK),
-    ]);
-
-    // Actifs : afficher délai si présent (ex: 20 jours)
-    elA.innerHTML = active.length
-      ? active.slice(0, 3).map(d => renderMiniDeal_(d, { showDelay: true })).join("")
-      : `<div class="muted" style="font-size:13px;">Aucun deal actif.</div>`;
-
-    // Stock : badge En stock
-    elS.innerHTML = stock.length
-      ? stock.slice(0, 3).map(d => renderMiniDeal_(d, { showDelay: false })).join("")
-      : `<div class="muted" style="font-size:13px;">Aucun deal en stock.</div>`;
-
-  } catch (e) {
-    console.log("Top blocks error:", e);
-    elA.innerHTML = `<div class="muted" style="font-size:13px;">Impossible de charger les deals.</div>`;
-    elS.innerHTML = `<div class="muted" style="font-size:13px;">Impossible de charger les deals.</div>`;
   }
 }
 
@@ -747,28 +735,6 @@ function computeEstimatedDelivery(stockDelayDays) {
     label
   };
 }
-function moveTopBlocksForToken_(hasToken) {
-  const wrap = document.getElementById("topBlocksWrap");
-  const anchor = document.getElementById("topBlocksAnchor");
-  const grid = document.getElementById("mainGrid"); // ta grille 2 colonnes
-
-  if (!wrap || !anchor || !grid) return;
-
-  if (hasToken) {
-    // sous les deux panneaux (deal + colonne droite)
-    grid.insertAdjacentElement("afterend", wrap);
-  } else {
-    // retour à la position d'origine
-    anchor.insertAdjacentElement("afterend", wrap);
-  }
-}
-
-function toggleTopBlocks_(hasToken) {
-  const el = document.getElementById('topBlocks');
-  if (!el) return;
-
-  el.classList.toggle('hidden', !hasToken);
-}
 
 function toggleAllDeals_(hasToken) {
   const header = document.getElementById("allDealsHeader");
@@ -782,6 +748,47 @@ function toggleAllDeals_(hasToken) {
 }
 
 
+function renderRightSameCoupon_(currentDeal, siblings) {
+  const el = document.getElementById("rightPane");
+  if (!el) return;
+
+  const code = currentDeal?.coupon_code ? String(currentDeal.coupon_code).trim() : "";
+
+  if (!code) {
+    el.innerHTML = `
+      <h3 class="subttl">Panier groupé</h3>
+      <p class="muted" style="margin:0; line-height:1.75; font-size:14px;">
+        Aucun <strong>code promo</strong> sur ce deal.
+      </p>
+    `;
+    return;
+  }
+
+  // On enlève le deal courant de la liste (optionnel)
+  const others = (siblings || []).filter(d => d && d.token && d.token !== currentDeal.token);
+
+  el.innerHTML = `
+    <h3 class="subttl">Même code promo</h3>
+
+    <p class="muted" style="margin:10px 0 0; line-height:1.75; font-size:14px;">
+      Ajoute plusieurs produits avec le <strong>même code</strong> pour mutualiser les frais de port.
+    </p>
+
+    <div style="margin-top:12px;">
+      <div class="muted" style="font-weight:800; margin-bottom:6px; font-size:13px;">
+        Produits avec ce code :
+      </div>
+
+      <div class="miniList">
+        ${
+          others.length
+            ? others.map(d => renderMiniDeal_(d, { showDelay: true })).join("")
+            : `<div class="muted" style="font-size:13px;">Aucun autre produit trouvé avec ce code.</div>`
+        }
+      </div>
+    </div>
+  `;
+}
 
 
 // =========================
@@ -789,8 +796,6 @@ function toggleAllDeals_(hasToken) {
 // =========================
 (function init() {
   const token = getTokenFromUrl();
-  loadTopBlocks_();
-  toggleTopBlocks_(!!token);
   toggleAllDeals_(!!token);
 
   if (!localStorage.getItem(CONSENT_KEY)) openCookie();
@@ -800,7 +805,6 @@ function toggleAllDeals_(hasToken) {
     renderRightNoToken();
     loadAllDealsPublic_();
   } else {
-    renderRightWithToken();
     loadDeal(token);
   }
 })();

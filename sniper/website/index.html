@@ -48,40 +48,6 @@
         Bons plans VTT — pièces & équipements à prix cassés.</strong>.
       </p>
       <!-- TOP BLOCKS: ACTIFS + EN STOCK -->
-      <div id="topBlocksAnchor"></div>
-      <div id="topBlocksWrap">
-        <div class="blocks" id="topBlocks" aria-live="polite">
-          <div class="card">
-            <div class="pad">
-              <div class="blockTitle">
-                <strong>🔥 Meilleurs deals actifs</strong>
-                <span class="pill" style="padding:6px 10px;">Tri : % remise</span>
-              </div>
-              <div class="muted" style="font-size:13px; line-height:1.6;">
-                Une sélection des meilleures remises encore valables. Les délais peuvent varier.
-              </div>
-              <div class="miniList" id="listActive">
-                <div class="muted" style="font-size:13px;">Chargement…</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="pad">
-              <div class="blockTitle">
-                <strong>⚡ En stock maintenant</strong>
-                <span class="pill" style="padding:6px 10px;">Expédition rapide</span>
-              </div>
-              <div class="muted" style="font-size:13px; line-height:1.6;">
-                Les mêmes critères, mais uniquement des produits annoncés en stock (0 jour).
-              </div>
-              <div class="miniList" id="listStock">
-                <div class="muted" style="font-size:13px;">Chargement…</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
       <div id="mainGrid" class="grid">
         <!-- LEFT: DEAL -->
@@ -104,6 +70,9 @@
           <div class="muted" style="font-weight:800; font-size:13px;">Ventes privées</div>
 
           <div>
+            <button id="stockFilterBtn" class="filterBtn" data-state="off">
+              Prêt à éxpedier 
+            </button>
             <button id="soldFilterBtn" class="filterBtn" data-state="off">
               Masquer vendus
             </button>
