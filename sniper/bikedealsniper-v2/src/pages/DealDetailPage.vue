@@ -4,45 +4,14 @@ import { useRoute, RouterLink } from "vue-router";
 import DealCard from "@/components/DealCard.vue";
 import { getDealsSameCoupon } from "@/lib/dealsApi";
 
-/**
- * A RENSEIGNER EXACTEMENT comme dans ton ancienne version.
- * (sinon le deal complet ne remontera pas)
- */
-const TABLE_NAME = "deals"; // <-- mets le nom exact
-const TOKEN_HEADER_NAME = "x-deal-token"; // <-- mets le header exact
+import type { DealRow } from "@/lib/types/DealRow";
+import { mapDealRowToUi, type DealUi } from "@/lib/mappers/dealMapper";
+
+const TABLE_NAME = "deals";
+const TOKEN_HEADER_NAME = "x-deal-token";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
-
-type DealRowFull = {
-  token: string;
-  title: string;
-  price_current: number;
-  price_original: number | null;
-  prct_discount: number;
-  coupon_code: string | null;
-  url: string | null;
-  category: string | null;
-  desc_ai_fr: string | null;
-  desc_rcz: string | null;
-  image: string | null;
-};
-
-type DealRowSibling = Record<string, any>;
-
-type DealUi = {
-  token: string; // identifiant page
-  title: string;
-  price: number;
-  oldPrice?: number;
-  discountPercent: number;
-  coupon_code: string | null; // code promo
-  rczUrl: string | null;
-  category: string | null;
-  desc_ai_fr: string | null;
-  desc_rcz: string | null;
-  imageUrl: string | null;
-};
 
 const route = useRoute();
 const token = computed(() => String(route.params.token || ""));
@@ -51,10 +20,27 @@ const loadingDeal = ref(true);
 const loadingRelated = ref(true);
 const errorMsg = ref<string>("");
 
-const dealRow = ref<DealRowFull | null>(null);
-const siblingsRows = ref<DealRowSibling[]>([]);
+const dealRow = ref<DealRow | null>(null);
+const siblingsRows = ref<DealRow[]>([]);
 
-async function fetchDealFullByTokenHeader(pToken: string) {
+const deal = computed<DealUi | null>(() =>
+  dealRow.value ? mapDealRowToUi(dealRow.value) : null,
+);
+
+const related = computed<DealUi[]>(() => {
+  const current = deal.value;
+  if (!current?.coupon_code) return [];
+  const c = current.coupon_code;
+
+  return siblingsRows.value
+    .map(mapDealRowToUi)
+    .filter((d) => d.token !== current.token && d.coupon_code === c)
+    .slice(0, 8);
+});
+
+async function fetchDealFullByTokenHeader(
+  pToken: string,
+): Promise<DealRow | null> {
   const url = `${SUPABASE_URL}/rest/v1/${TABLE_NAME}?select=*`;
 
   const r = await fetch(url, {
@@ -72,62 +58,13 @@ async function fetchDealFullByTokenHeader(pToken: string) {
 
   const json = await r.json();
   if (!Array.isArray(json) || json.length < 1) return null;
-  return json[0] as DealRowFull;
+  return json[0] as DealRow;
 }
-
-function normalizeDeal(r: DealRowFull): DealUi {
-  return {
-    token: String(r.token),
-    title: String(r.title),
-    price: Number(r.price_current),
-    oldPrice: r.price_original != null ? Number(r.price_original) : undefined,
-    discountPercent: Number(r.prct_discount),
-    coupon_code: r.coupon_code ?? null,
-    rczUrl: r.url ?? null,
-    category: r.category ?? null,
-    desc_ai_fr: r.desc_ai_fr ?? null,
-    desc_rcz: r.desc_rcz ?? null,
-    imageUrl: r.image ?? null,
-  };
-}
-
-function normalizeSibling(r: any): DealUi {
-  // Payload "léger" — on garde la même forme UI.
-  // Ici on suppose que tes RPC retournent ces colonnes. Si une manque, tu me donnes son nom exact.
-  return {
-    token: String(r.token),
-    title: String(r.title),
-    price: Number(r.price_current),
-    oldPrice: r.price_original != null ? Number(r.price_original) : undefined,
-    discountPercent: Number(r.prct_discount),
-    coupon_code: r.coupon_code ?? null,
-    rczUrl: r.url ?? null,
-    category: r.category ?? null,
-    desc_ai_fr: null,
-    desc_rcz: null,
-    imageUrl: r.image ?? null,
-  };
-}
-
-const deal = computed<DealUi | null>(() =>
-  dealRow.value ? normalizeDeal(dealRow.value) : null,
-);
-
-const related = computed<DealUi[]>(() => {
-  if (!deal.value?.coupon_code) return [];
-  const c = deal.value.coupon_code;
-
-  return siblingsRows.value
-    .map(normalizeSibling)
-    .filter((d) => d.token !== deal.value!.token && d.coupon_code === c)
-    .slice(0, 8);
-});
 
 async function loadAll(pToken: string) {
   if (!pToken) return;
 
   errorMsg.value = "";
-
   loadingDeal.value = true;
   loadingRelated.value = true;
 
@@ -135,7 +72,7 @@ async function loadAll(pToken: string) {
   siblingsRows.value = [];
 
   try {
-    // A) Deal complet (avec desc_ai_fr)
+    // A) Deal complet
     dealRow.value = await fetchDealFullByTokenHeader(pToken);
     if (!dealRow.value) {
       errorMsg.value = "Deal introuvable.";
@@ -144,7 +81,8 @@ async function loadAll(pToken: string) {
 
     // B) Related (même coupon_code)
     try {
-      siblingsRows.value = await getDealsSameCoupon(pToken);
+      // ⚠️ getDealsSameCoupon doit renvoyer des lignes compatibles (token, title, price_current, etc.)
+      siblingsRows.value = (await getDealsSameCoupon(pToken)) as DealRow[];
     } catch (e) {
       console.log("same coupon RPC error:", e);
       siblingsRows.value = [];
@@ -162,7 +100,6 @@ onMounted(() => {
   loadAll(token.value);
 });
 
-// Si tu navigues entre deals sans recharger la page
 watch(token, (t) => loadAll(t));
 </script>
 
@@ -202,13 +139,49 @@ watch(token, (t) => loadAll(t));
         <div
           class="overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm"
         >
-          <div class="relative aspect-[4/5] bg-slate-100">
-            <div
-              class="absolute left-3 top-3 rounded-xl bg-orange-500 px-2 py-1 text-xs font-bold text-black"
-            >
-              -{{ deal.discountPercent }}%
+          <div class="relative aspect-[4/5]">
+            <!-- Gauche: Discount -->
+            <div class="absolute left-3 top-3 z-10">
+              <span
+                v-if="deal.discountPercent != null"
+                class="inline-flex items-center rounded-full bg-slate-900 px-2.5 py-1 text-xs font-extrabold text-white"
+              >
+                -{{ Math.round(deal.discountPercent) }}%
+              </span>
             </div>
 
+            <!-- Droite: Stock + Vendu -->
+            <div
+              class="absolute right-3 top-3 z-10 flex flex-col items-end gap-2"
+            >
+              <!-- Stock -->
+              <span
+                v-if="deal.stock_delay === 0"
+                class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700"
+              >
+                En stock
+              </span>
+
+              <span
+                v-else-if="deal.stock_delay != null && deal.stock_delay > 0"
+                class="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700"
+              >
+                ⏳ {{ deal.stock_delay }} j ouvrés
+              </span>
+            </div>
+            <!-- 🔴 Bandeau diagonal VENDU (plein cadre) -->
+            <div
+              v-if="deal.available === false"
+              class="absolute inset-0 z-20 pointer-events-none overflow-hidden"
+            >
+              <div
+                class="absolute left-1/2 top-1/2 w-[240%] -translate-x-1/2 -translate-y-1/2 rotate-[-12deg] bg-red-600 text-white text-sm font-extrabold tracking-wider text-center py-3 shadow-lg antialiased subpixel-antialiased transform-gpu"
+              >
+                VENDU
+              </div>
+            </div>
+
+            <!-- image -->
             <img
               v-if="deal.imageUrl"
               :src="deal.imageUrl"
@@ -223,7 +196,6 @@ watch(token, (t) => loadAll(t));
               Pas d’image
             </div>
           </div>
-
         </div>
 
         <!-- info -->
@@ -266,7 +238,7 @@ watch(token, (t) => loadAll(t));
           <div class="mt-5">
             <a
               class="inline-flex w-full items-center justify-center rounded-2xl bg-orange-500 px-4 py-3 text-sm font-bold text-black hover:bg-orange-400"
-              :href="deal.rczUrl || '#'"
+              :href="deal.url || '#'"
               target="_blank"
               rel="noreferrer"
             >
@@ -279,7 +251,9 @@ watch(token, (t) => loadAll(t));
 
           <!-- AI -->
           <div class="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
-            <div class="text-sm font-semibold text-slate-900">Description IA :</div>
+            <div class="text-sm font-semibold text-slate-900">
+              Description IA :
+            </div>
 
             <div
               v-if="deal.desc_ai_fr && deal.desc_ai_fr.trim().length"
@@ -287,7 +261,7 @@ watch(token, (t) => loadAll(t));
             >
               {{ deal.desc_ai_fr }}
             </div>
-                        <div class="mt-3 text-sm font-semibold text-slate-900">RCZ : </div>
+            <div class="mt-3 text-sm font-semibold text-slate-900">RCZ :</div>
 
             <div
               v-if="deal.desc_rcz && deal.desc_rcz.trim().length"
