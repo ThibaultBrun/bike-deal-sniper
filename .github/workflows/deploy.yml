@@ -3,10 +3,10 @@ name: Deploy website to GitHub Pages
 on:
   push:
     branches:
-      - main  # à chaque push sur main
+      - main
 
 permissions:
-  contents: write  # nécessaire pour pousser sur gh-pages
+  contents: write
 
 jobs:
   deploy:
@@ -16,11 +16,24 @@ jobs:
       - name: Checkout main branch
         uses: actions/checkout@v4
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        working-directory: sniper/bikedealsniper-v2
+        run: npm install
+
+      - name: Build Vite project
+        working-directory: sniper/bikedealsniper-v2
+        run: npm run build
+
       - name: Prepare files
         run: |
           rm -rf ./deploy
           mkdir deploy
-          cp -r sniper/website/* deploy/
+          cp -r sniper/bikedealsniper-v2/dist/* deploy/
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
