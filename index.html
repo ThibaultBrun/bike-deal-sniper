@@ -1,125 +1,14 @@
 <!doctype html>
-<html lang="fr">
-
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#f3f4f6" />
-  <title>Bike Deal Sniper</title>
-  <meta name="description" content="Accède en temps réel aux meilleurs deals RCZ (neuf, OEM, fins de stock)." />
-  <link rel="stylesheet" href="style.css">
-  <link rel="icon" type="image/png" href="logo.png">
-
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7552996355584047"
-    crossorigin="anonymous"></script>
-</head>
-
-<body>
-  <a href="index.html" class="bannerLink" aria-label="Retour à l’accueil">
-
-    <div class="brand">
-      <img class="brandBanner" src="banner.png" alt="Bike Deal Sniper">
-      <div>
-        <strong id="siteName">Bike Deal Sniper</strong>
-        <small>Accès instantané aux bons plans VTT XC AM ENDURO DH.</small>
-      </div>
-    </div>
-  </a>
-  <header class="siteHeader">
-
-    <!-- Menu navigation -->
-    <nav class="headerNav">
-
-      <a class="navLink" href="how-to.html">Utilisation du site</a>
-      <a class="navLink" href="guide-brake.html">Choisir ses freins</a>
-      <a class="navLink" href="guide-shox.html">Choisir ses suspensions</a>
-      <a class="navLink" href="guide-wheel.html">Choisir ses roues</a>
-      <a class="navLink" href="guide-transmission.html">Choisir sa transmission</a>
-      <a class="navLink" href="telegram.html">Chaine Telegram</a>
-      <a class="navLink" href="about.html">À propos</a>
-      <a class="navLink" href="mentions.html">Mentions légales</a>
-    </nav>
-  </header>
-
-  <div class="hero">
-    <div class="hero-inner">
-      <h1>Les bons plans RCZ, en direct.</h1>
-      <p class="lead">
-        Bons plans VTT — pièces & équipements à prix cassés.</strong>.
-      </p>
-      <!-- TOP BLOCKS: ACTIFS + EN STOCK -->
-
-      <div id="mainGrid" class="grid">
-        <!-- LEFT: DEAL -->
-        <div class="card" id="dealBox">
-          <div class="pad" id="deal">Chargement…</div>
-        </div>
-
-        <!-- RIGHT: NO TOKEN CONTENT / TELEGRAM -->
-        <div class="card">
-          <div class="pad" id="rightPane">
-            <!-- Rempli par JS selon présence token -->
-          </div>
-        </div>
-      </div>
-
-
-      <div id="controlsSticky" class="controlsSticky">
-
-        <div id="allDealsHeader" class="allDealsHeader">
-          <div class="muted" style="font-weight:800; font-size:13px;">Ventes privées</div>
-
-          <div>
-            <button id="stockFilterBtn" class="filterBtn" data-state="off">
-              Prêt à éxpedier 
-            </button>
-            <button id="soldFilterBtn" class="filterBtn" data-state="off">
-              Masquer vendus
-            </button>
-            <select id="sortSelect" class="sortSelect">
-              <option value="price_asc">Prix ↑</option>
-              <option value="price_desc">Prix ↓</option>
-              <option value="discount_asc">Remise ↑</option>
-              <option value="discount_desc">Remise ↓</option>
-            </select>
-            <input id="searchInput" type="search" placeholder="Rechercher un produit (nom)…"
-              aria-label="Recherche par nom de produit" />
-          </div>
-
-        </div>
-
-        <div id="typeFilters" class="typeFilters" aria-label="Filtres par type"></div>
-
-        <div class="muted" id="allDealsCount" style="font-size:13px;">Chargement…</div>
-      </div>
-    </div>
-
-    <div id="allDeals" class="dealsGrid" aria-live="polite">
-      <div class="muted" style="font-size:13px;">Chargement…</div>
-    </div>
-
-    <div class="footer">
-      © <span id="year"></span> — Bike Deal Sniper.
-    </div>
-  </div>
-  </div>
-  </div>
-
-  <!-- Cookie banner -->
-  <div class="cookie" id="cookie">
-    <div class="cookieInner">
-      <p>
-        🍪 Cookies : essentiels (toujours) + audience/pub (optionnels). Tu peux accepter ou refuser.
-        <a href="#privacy">En savoir plus</a>.
-      </p>
-      <div class="cookieActions">
-        <button class="btn ghost" onclick="rejectCookies()">Refuser</button>
-        <button class="btn" onclick="acceptCookies()">Accepter</button>
-      </div>
-    </div>
-  </div>
-
-  <script src="app.js"></script>
-</body>
-
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/bikedealsniper/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>bikedealsniper-v2</title>
+    <script type="module" crossorigin src="/bikedealsniper/assets/index-CswVivg3.js"></script>
+    <link rel="stylesheet" crossorigin href="/bikedealsniper/assets/index-CY_pDlPs.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
 </html>
