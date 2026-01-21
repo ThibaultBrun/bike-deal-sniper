@@ -25,6 +25,14 @@ jobs:
         working-directory: sniper/bikedealsniper-v2
         run: npm install
 
+      - name: Create .env.production
+        working-directory: sniper/bikedealsniper-v2
+        run: |
+          cat > .env.production << 'EOF'
+          VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          EOF
+
       - name: Build Vite project
         working-directory: sniper/bikedealsniper-v2
         run: npm run build
