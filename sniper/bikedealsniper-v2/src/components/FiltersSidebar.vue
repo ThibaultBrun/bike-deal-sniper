@@ -13,6 +13,7 @@ const props = defineProps<{
   search: string;
   categories: CategoryOption[];
   selectedCategories: string[];
+  embedded?: boolean; // ✅ nouveau
 }>();
 
 const emit = defineEmits<{
@@ -45,7 +46,13 @@ function toggleCategory(key: string) {
 </script>
 
 <template>
-  <aside class="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
+  <aside
+    :class="
+      props.embedded
+        ? ''
+        : 'rounded-2xl border border-black/5 bg-white p-4 shadow-sm'
+    "
+  >
     <div class="text-sm font-semibold text-slate-900">Filtres</div>
 
     <!-- Catégories dynamiques -->
@@ -100,6 +107,7 @@ function toggleCategory(key: string) {
 
     <div class="mt-4">
       <button
+        type="button"
         @click="emit('reset')"
         class="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
       >
